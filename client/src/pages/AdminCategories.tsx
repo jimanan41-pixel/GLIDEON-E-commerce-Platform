@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ArrowLeft, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, X, Upload, Image as ImageIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -24,6 +24,7 @@ export default function AdminCategories() {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+
 
   // Form states
   const [categoryForm, setCategoryForm] = useState({
@@ -449,6 +450,9 @@ export default function AdminCategories() {
                               <Upload className="mr-2 h-4 w-4" />
                               {uploadingImage ? "Uploading..." : "Choose Image"}
                             </Button>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Upload images directly to your server (works on all platforms)
+                            </p>
                           </div>
                         </div>
                       </div>
