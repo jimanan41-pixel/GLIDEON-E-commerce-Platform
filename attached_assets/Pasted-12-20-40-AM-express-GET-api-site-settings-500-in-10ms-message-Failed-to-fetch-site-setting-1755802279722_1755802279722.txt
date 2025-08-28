@@ -1,0 +1,37 @@
+12:20:40 AM [express] GET /api/site-settings 500 in 10ms :: {"message":"Failed to fetch site settings…
+Error fetching categories: PostgresError: column "is_active" does not exist
+    at ErrorResponse (file:///D:/react-finalproject/CommerceGlide/CommerceGlide/node_modules/postgres/src/connection.js:794:26)
+    at handle (file:///D:/react-finalproject/CommerceGlide/CommerceGlide/node_modules/postgres/src/connection.js:480:6)
+    at Socket.data (file:///D:/react-finalproject/CommerceGlide/CommerceGlide/node_modules/postgres/src/connection.js:315:9)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42703',
+  position: '58',
+  file: 'parse_relation.c',
+  line: '3721',
+  routine: 'errorMissingColumn'
+}
+12:20:40 AM [express] GET /api/categories 500 in 16ms :: {"message":"Failed to fetch categories"}
+Error fetching products: PostgresError: column "short_description" does not exist
+    at ErrorResponse (file:///D:/react-finalproject/CommerceGlide/CommerceGlide/node_modules/postgres/src/connection.js:794:26)
+    at handle (file:///D:/react-finalproject/CommerceGlide/CommerceGlide/node_modules/postgres/src/connection.js:480:6)
+    at Socket.data (file:///D:/react-finalproject/CommerceGlide/CommerceGlide/node_modules/postgres/src/connection.js:315:9)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42703',
+  position: '45',
+  file: 'parse_relation.c',
+  line: '3721',
+  routine: 'errorMissingColumn'
+}
+12:20:40 AM [express] GET /api/products 500 in 22ms :: {"message":"Failed to fetch products"}
