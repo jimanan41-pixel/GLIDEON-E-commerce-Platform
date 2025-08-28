@@ -321,23 +321,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      // For local development, return placeholder paths
-      if (!process.env.REPL_ID) {
-        console.log("Local development mode: Image upload disabled, returning placeholders");
-        const imagePaths = req.files?.map((file: any) => `/placeholder-images/${file.originalname}`) || [];
-        return res.json({ imagePaths });
-      }
-
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No images provided" });
       }
 
-      const objectStorageService = new ObjectStorageService();
+      const fs = require('fs').promises;
+      const path = require('path');
+      const { randomUUID } = require('crypto');
+      
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
+      try {
+        await fs.access(uploadsDir);
+      } catch (error) {
+        await fs.mkdir(uploadsDir, { recursive: true });
+      }
+
       const imagePaths: string[] = [];
 
       for (const file of req.files) {
-        const imagePath = await objectStorageService.uploadFile(file, 'products');
-        imagePaths.push(imagePath);
+        // Generate unique filename
+        const fileExtension = path.extname(file.originalname);
+        const uniqueFilename = `${randomUUID()}${fileExtension}`;
+        const filePath = path.join(uploadsDir, uniqueFilename);
+        
+        // Save file to uploads directory
+        await fs.writeFile(filePath, file.buffer);
+        
+        // Return web-accessible path
+        const webPath = `/uploads/${uniqueFilename}`;
+        imagePaths.push(webPath);
       }
 
       res.json({ imagePaths });
