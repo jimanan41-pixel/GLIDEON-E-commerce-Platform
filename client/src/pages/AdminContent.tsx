@@ -572,6 +572,48 @@ export default function AdminContent() {
     }
   };
 
+  const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('images', files[0]);
+
+      const response = await fetch('/api/upload/images', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload favicon');
+      }
+
+      const result = await response.json();
+      const uploadedPath = result.imagePaths[0];
+
+      setLogoForm(prev => ({
+        ...prev,
+        faviconUrl: uploadedPath,
+      }));
+
+      toast({
+        title: "Success",
+        description: "Favicon uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload favicon",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading || !isAuthenticated || user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1168,41 +1210,28 @@ export default function AdminContent() {
                         </p>
                       </div>
                     )}
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={1048576} // 1MB for favicon
-                      onGetUploadParameters={async () => {
-                        const token = localStorage.getItem('authToken');
-                        const response = await fetch('/api/objects/upload', {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${token}`
-                          },
-                        });
-                        const { uploadURL } = await response.json();
-                        return {
-                          method: 'PUT' as const,
-                          url: uploadURL,
-                        };
-                      }}
-                      onComplete={(result) => {
-                        if (result.successful.length > 0) {
-                          const uploadedFile = result.successful[0];
-                          const faviconUrl = uploadedFile.uploadURL;
-                          setLogoForm(prev => ({ ...prev, faviconUrl }));
-                          toast({ 
-                            title: "Success", 
-                            description: "Favicon uploaded successfully" 
-                          });
-                        }
-                      }}
-                      buttonClassName="w-full"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Upload className="h-4 w-4" />
-                        <span>Upload Favicon</span>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                      <div className="text-center">
+                        <label htmlFor="favicon-upload" className="cursor-pointer">
+                          <div className="flex flex-col items-center space-y-2">
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Upload Favicon
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Click to select or drag and drop
+                            </span>
+                          </div>
+                          <input
+                            id="favicon-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFaviconUpload}
+                          />
+                        </label>
                       </div>
-                    </ObjectUploader>
+                    </div>
                     <Input
                       id="favicon-url"
                       value={logoForm.faviconUrl || currentLogo.faviconUrl || ''}
