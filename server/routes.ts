@@ -329,11 +329,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const path = require('path');
       const { randomUUID } = require('crypto');
       
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
+      // Use uploads directory in project root for better deployment compatibility
+      const uploadsDir = path.join(process.cwd(), 'uploads');
       try {
         await fs.access(uploadsDir);
       } catch (error) {
+        console.log('Creating uploads directory:', uploadsDir);
         await fs.mkdir(uploadsDir, { recursive: true });
       }
 
@@ -345,6 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const uniqueFilename = `${randomUUID()}${fileExtension}`;
         const filePath = path.join(uploadsDir, uniqueFilename);
         
+        console.log('Saving file to:', filePath);
         // Save file to uploads directory
         await fs.writeFile(filePath, file.buffer);
         
@@ -353,34 +355,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imagePaths.push(webPath);
       }
 
+      console.log('Upload successful, returning paths:', imagePaths);
       res.json({ imagePaths });
     } catch (error) {
       console.error("Error uploading images:", error);
-      res.status(500).json({ message: "Failed to upload images" });
+      res.status(500).json({ message: "Failed to upload images", error: error.message });
     }
   });
 
-  // Serve uploaded images
-  app.get('/objects/:folder/:filename', async (req, res) => {
-    // For local development, return 404 for object requests
-    if (!process.env.REPL_ID) {
-      console.log(`Local development mode: Object ${req.params.folder}/${req.params.filename} not available`);
-      return res.status(404).json({ message: "Object storage not available in local development" });
-    }
-    
-    try {
-      const { folder, filename } = req.params;
-      const objectPath = `/objects/${folder}/${filename}`;
-      
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-      
-      await objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error serving image:", error);
-      res.status(404).json({ message: "Image not found" });
-    }
-  });
+  // Object storage routes removed - now using file system uploads directly
 
   // Category routes
   app.get('/api/categories', async (req, res) => {
