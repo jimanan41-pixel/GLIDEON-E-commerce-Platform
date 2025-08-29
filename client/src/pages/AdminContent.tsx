@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ObjectUploader } from "@/components/ObjectUploader";
+// ObjectUploader removed - now using direct file upload
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -488,6 +488,90 @@ export default function AdminContent() {
     setShowBannerForm(false);
   };
 
+  const handleBannerImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('images', files[0]);
+
+      const response = await fetch('/api/upload/images', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload banner image');
+      }
+
+      const result = await response.json();
+      const uploadedPath = result.imagePaths[0];
+
+      setBannerForm(prev => ({
+        ...prev,
+        imageUrl: uploadedPath,
+      }));
+
+      toast({
+        title: "Success",
+        description: "Banner image uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload banner image",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('images', files[0]);
+
+      const response = await fetch('/api/upload/images', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload logo');
+      }
+
+      const result = await response.json();
+      const uploadedPath = result.imagePaths[0];
+
+      setLogoForm(prev => ({
+        ...prev,
+        logoUrl: uploadedPath,
+      }));
+
+      toast({
+        title: "Success",
+        description: "Logo uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload logo",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading || !isAuthenticated || user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -696,41 +780,28 @@ export default function AdminContent() {
                             </p>
                           </div>
                         )}
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760} // 10MB
-                      onGetUploadParameters={async () => {
-                        const token = localStorage.getItem('authToken');
-                        const response = await fetch('/api/objects/upload', {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${token}`
-                          },
-                        });
-                        const { uploadURL } = await response.json();
-                        return {
-                          method: 'PUT' as const,
-                          url: uploadURL,
-                        };
-                      }}
-                      onComplete={(result) => {
-                        if (result.successful.length > 0) {
-                          const uploadedFile = result.successful[0];
-                          const imageUrl = uploadedFile.uploadURL;
-                          setBannerForm(prev => ({ ...prev, imageUrl }));
-                          toast({ 
-                            title: "Success", 
-                            description: "Banner image uploaded successfully" 
-                          });
-                        }
-                      }}
-                      buttonClassName="w-full"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Upload className="h-4 w-4" />
-                        <span>Upload Banner Image</span>
-                      </div>
-                    </ObjectUploader>
+                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                          <div className="text-center">
+                            <label htmlFor="banner-image-upload" className="cursor-pointer">
+                              <div className="flex flex-col items-center space-y-2">
+                                <Upload className="h-8 w-8 text-gray-400" />
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  Upload Banner Image
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  Click to select or drag and drop
+                                </span>
+                              </div>
+                              <input
+                                id="banner-image-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleBannerImageUpload}
+                              />
+                            </label>
+                          </div>
+                        </div>
                         <Input
                           id="banner-image-url"
                           value={bannerForm.imageUrl}
@@ -1037,41 +1108,28 @@ export default function AdminContent() {
                         </p>
                       </div>
                     )}
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={5242880} // 5MB for logo
-                      onGetUploadParameters={async () => {
-                        const token = localStorage.getItem('authToken');
-                        const response = await fetch('/api/objects/upload', {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${token}`
-                          },
-                        });
-                        const { uploadURL } = await response.json();
-                        return {
-                          method: 'PUT' as const,
-                          url: uploadURL,
-                        };
-                      }}
-                      onComplete={(result) => {
-                        if (result.successful.length > 0) {
-                          const uploadedFile = result.successful[0];
-                          const logoUrl = uploadedFile.uploadURL;
-                          setLogoForm(prev => ({ ...prev, logoUrl }));
-                          toast({ 
-                            title: "Success", 
-                            description: "Logo uploaded successfully" 
-                          });
-                        }
-                      }}
-                      buttonClassName="w-full"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Upload className="h-4 w-4" />
-                        <span>Upload Logo</span>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                      <div className="text-center">
+                        <label htmlFor="logo-upload" className="cursor-pointer">
+                          <div className="flex flex-col items-center space-y-2">
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Upload Logo
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Click to select or drag and drop
+                            </span>
+                          </div>
+                          <input
+                            id="logo-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleLogoUpload}
+                          />
+                        </label>
                       </div>
-                    </ObjectUploader>
+                    </div>
                     <Input
                       id="logo-url"
                       value={logoForm.logoUrl || currentLogo.logoUrl || ''}
