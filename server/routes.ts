@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 // JWT-only authentication for deployment
-import { ObjectStorageService } from "./objectStorage";
+// Object storage removed - now using file system upload
 import { insertCategorySchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertOrderItemSchema, insertCmsContentSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcrypt";
@@ -1039,84 +1039,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Object Storage routes for file uploads
-  app.get("/public-objects/:filePath(*)", async (req, res) => {
-    // For local development, return 404 for all public object requests
-    if (!process.env.REPL_ID) {
-      console.log(`Local development mode: Public object ${req.params.filePath} not available`);
-      return res.status(404).json({ error: "Object storage not available in local development" });
-    }
-    
-    const filePath = req.params.filePath;
-    const objectStorageService = new ObjectStorageService();
-    try {
-      const file = await objectStorageService.searchPublicObject(filePath);
-      if (!file) {
-        return res.status(404).json({ error: "File not found" });
-      }
-      objectStorageService.downloadObject(file, res);
-    } catch (error) {
-      console.error("Error searching for public object:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  // Public objects route removed - now using file system upload
 
-  app.post("/api/objects/upload", authenticateJWT, async (req: any, res) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
+  // Object storage upload route removed - now using file system upload
 
-      // For local development, return placeholder upload URL
-      if (!process.env.REPL_ID) {
-        console.log("Local development mode: Returning placeholder upload URL");
-        return res.json({ uploadURL: `http://localhost:5000/local-upload/placeholder` });
-      }
-
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error('Error getting upload URL:', error);
-      res.status(500).json({ message: 'Failed to get upload URL' });
-    }
-  });
-
-  app.put("/api/banner-images", authenticateJWT, async (req: any, res) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
-
-      if (!req.body.bannerImageURL) {
-        return res.status(400).json({ error: "bannerImageURL is required" });
-      }
-
-      // For local development, return the URL as-is
-      if (!process.env.REPL_ID) {
-        console.log("Local development mode: Banner image URL passed through");
-        return res.status(200).json({
-          objectPath: req.body.bannerImageURL,
-        });
-      }
-
-      const userId = req.user.id;
-      const objectStorageService = new ObjectStorageService();
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.bannerImageURL,
-        {
-          owner: userId,
-          visibility: "public", // Banner images should be publicly accessible
-        },
-      );
-
-      res.status(200).json({
-        objectPath: objectPath,
-      });
-    } catch (error) {
-      console.error("Error setting banner image:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  // Banner image route removed - now using file system upload
 
   const httpServer = createServer(app);
   return httpServer;
