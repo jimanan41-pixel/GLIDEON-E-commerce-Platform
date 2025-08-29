@@ -8,6 +8,9 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import multer from "multer";
+import { promises as fs } from "fs";
+import path from "path";
+import { randomUUID } from "crypto";
 
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -325,9 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No images provided" });
       }
 
-      const fs = require('fs').promises;
-      const path = require('path');
-      const { randomUUID } = require('crypto');
+      // Using ES6 imports (defined at top of file)
       
       // Use uploads directory in project root for better deployment compatibility
       const uploadsDir = path.join(process.cwd(), 'uploads');
