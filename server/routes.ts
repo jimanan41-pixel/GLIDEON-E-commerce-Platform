@@ -352,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await fs.writeFile(filePath, file.buffer);
         
         // Return web-accessible path
-        const webPath = `/uploads/${uniqueFilename}`;
+        const webPath = `client/public/uploads/${uniqueFilename}`;
         imagePaths.push(webPath);
       }
 
