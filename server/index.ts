@@ -47,7 +47,7 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // Serve uploaded images from client/public/uploads directory
+  /// Serve uploaded images from client/public/uploads directory
   app.use('/uploads', express.static('client/public/uploads'));
 
   // importantly only setup vite in development and after
