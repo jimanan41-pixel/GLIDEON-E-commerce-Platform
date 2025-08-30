@@ -317,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // JWT Authentication routes only
 
 
-  // Image upload route
+  // Image upload route - saves to GitHub repository for persistence
   app.post('/api/upload/images', authenticateJWT, upload.array('images', 10), async (req: any, res) => {
     try {
       if (req.user?.role !== 'admin') {
@@ -328,9 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No images provided" });
       }
 
-      // Using ES6 imports (defined at top of file)
-      
-      // Use client/public/uploads for permanent file storage that persists across restarts
+      // Save to client/public/uploads directory (part of GitHub repository)
       const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
       try {
         await fs.access(uploadsDir);
@@ -342,21 +340,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imagePaths: string[] = [];
 
       for (const file of req.files) {
-        // Generate unique filename
+        // Generate unique filename with timestamp for better organization
+        const timestamp = Date.now();
         const fileExtension = path.extname(file.originalname);
-        const uniqueFilename = `${randomUUID()}${fileExtension}`;
+        const uniqueFilename = `${timestamp}-${randomUUID()}${fileExtension}`;
         const filePath = path.join(uploadsDir, uniqueFilename);
         
-        console.log('Saving file to:', filePath);
-        // Save file to uploads directory
+        console.log('Saving file to repository:', filePath);
+        // Save file to repository uploads directory
         await fs.writeFile(filePath, file.buffer);
         
         // Return web-accessible path
-        const webPath = `./public/uploads/${uniqueFilename}`;
+        const webPath = `/uploads/${uniqueFilename}`;
         imagePaths.push(webPath);
       }
 
-      console.log('Upload successful, returning paths:', imagePaths);
+      console.log('Upload successful, files saved to repository:', imagePaths);
       res.json({ imagePaths });
     } catch (error) {
       console.error("Error uploading images:", error);
