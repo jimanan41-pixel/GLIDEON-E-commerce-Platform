@@ -330,8 +330,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Using ES6 imports (defined at top of file)
       
-      // Use uploads directory in project root for better deployment compatibility
-      const uploadsDir = path.join(process.cwd(), 'uploads');
+      // Use client/public/uploads for permanent file storage that persists across restarts
+      const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
       try {
         await fs.access(uploadsDir);
       } catch (error) {
