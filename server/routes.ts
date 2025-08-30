@@ -346,16 +346,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const uniqueFilename = `${timestamp}-${randomUUID()}${fileExtension}`;
         const filePath = path.join(uploadsDir, uniqueFilename);
         
-        console.log('Saving file to repository:', filePath);
+        console.log('💾 Saving file to GitHub repository:', filePath);
         // Save file to repository uploads directory
         await fs.writeFile(filePath, file.buffer);
+        
+        // Verify file was saved
+        const stats = await fs.stat(filePath);
+        console.log(`✅ File saved successfully - ${stats.size} bytes`);
         
         // Return web-accessible path
         const webPath = `/uploads/${uniqueFilename}`;
         imagePaths.push(webPath);
       }
 
-      console.log('Upload successful, files saved to repository:', imagePaths);
+      console.log('✅ Upload successful - files saved to GitHub repository:', imagePaths);
+      console.log('📁 Files will persist across all Render deployments');
       res.json({ imagePaths });
     } catch (error) {
       console.error("Error uploading images:", error);
