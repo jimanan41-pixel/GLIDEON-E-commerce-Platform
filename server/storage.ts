@@ -2,6 +2,7 @@ import {
   users,
   categories,
   products,
+  productVariants,
   cartItems,
   orders,
   orderItems,
@@ -18,6 +19,8 @@ import {
   type InsertCategory,
   type Product,
   type InsertProduct,
+  type ProductVariant,
+  type InsertProductVariant,
   type CartItem,
   type InsertCartItem,
   type Order,
@@ -39,6 +42,7 @@ import {
   type SiteSetting,
   type InsertSiteSetting,
 } from "@shared/schema";
+import "dotenv/config";
 import { db } from "./db";
 import { eq, and, desc, like, ilike, sql, isNull } from "drizzle-orm";
 
@@ -69,8 +73,17 @@ export interface IStorage {
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
   
+  // Product Variant operations
+  getProductVariants(productId: string): Promise<ProductVariant[]>;
+  getVariantById(id: string): Promise<ProductVariant | undefined>;
+  createProductVariant(variant: InsertProductVariant): Promise<ProductVariant>;
+  updateProductVariant(id: string, variant: Partial<InsertProductVariant>): Promise<ProductVariant>;
+  deleteProductVariant(id: string): Promise<void>;
+  getVariantsByProduct(productId: string): Promise<ProductVariant[]>;
+  
   // Cart operations
   getCartItems(userId: string): Promise<CartItem[]>;
+  getCartItemsWithVariants(userId: string): Promise<(CartItem & { variant?: ProductVariant; product?: Product })[]>;
   addToCart(cartItem: InsertCartItem): Promise<CartItem>;
   updateCartItem(id: string, quantity: number): Promise<CartItem>;
   removeFromCart(id: string): Promise<void>;
@@ -252,13 +265,13 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    let query = db.select().from(products).where(and(...conditions)).orderBy(desc(products.createdAt));
+    const baseQuery = db.select().from(products).where(and(...conditions)).orderBy(desc(products.createdAt));
     
     if (options.limit) {
-      query = query.limit(options.limit);
+      return await baseQuery.limit(options.limit);
     }
     
-    return await query;
+    return await baseQuery;
   }
 
   async getProductById(id: string): Promise<Product | undefined> {
@@ -285,14 +298,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [newProduct] = await db.insert(products).values(product).returning();
+    const [newProduct] = await db.insert(products).values(product as any).returning();
     return newProduct;
   }
 
   async updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product> {
+    const updateData = { ...product, updatedAt: new Date() };
     const [updatedProduct] = await db
       .update(products)
-      .set({ ...product, updatedAt: new Date() } as any)
+      .set(updateData as any)
       .where(eq(products.id, id))
       .returning();
     return updatedProduct;
@@ -302,17 +316,81 @@ export class DatabaseStorage implements IStorage {
     await db.update(products).set({ isActive: false }).where(eq(products.id, id));
   }
 
+  // Product Variant operations
+  async getProductVariants(productId: string): Promise<ProductVariant[]> {
+    return await db.select().from(productVariants).where(and(eq(productVariants.productId, productId), eq(productVariants.isActive, true))).orderBy(productVariants.size, productVariants.flavor);
+  }
+
+  async getVariantById(id: string): Promise<ProductVariant | undefined> {
+    const [variant] = await db.select().from(productVariants).where(eq(productVariants.id, id));
+    return variant;
+  }
+
+  async createProductVariant(variant: InsertProductVariant): Promise<ProductVariant> {
+    const [newVariant] = await db.insert(productVariants).values(variant).returning();
+    return newVariant;
+  }
+
+  async updateProductVariant(id: string, variant: Partial<InsertProductVariant>): Promise<ProductVariant> {
+    const [updatedVariant] = await db
+      .update(productVariants)
+      .set({ ...variant, updatedAt: new Date() } as any)
+      .where(eq(productVariants.id, id))
+      .returning();
+    return updatedVariant;
+  }
+
+  async deleteProductVariant(id: string): Promise<void> {
+    await db.update(productVariants).set({ isActive: false }).where(eq(productVariants.id, id));
+  }
+
+  async getVariantsByProduct(productId: string): Promise<ProductVariant[]> {
+    return await db.select().from(productVariants).where(and(eq(productVariants.productId, productId), eq(productVariants.isActive, true))).orderBy(productVariants.size, productVariants.flavor);
+  }
+
   // Cart operations
   async getCartItems(userId: string): Promise<CartItem[]> {
     return await db.select().from(cartItems).where(eq(cartItems.userId, userId));
   }
 
+  async getCartItemsWithVariants(userId: string): Promise<(CartItem & { variant?: ProductVariant; product?: Product })[]> {
+    const result = await db
+      .select({
+        cartItem: cartItems,
+        variant: productVariants,
+        product: products,
+      })
+      .from(cartItems)
+      .leftJoin(productVariants, eq(cartItems.variantId, productVariants.id))
+      .leftJoin(products, eq(cartItems.productId, products.id))
+      .where(eq(cartItems.userId, userId));
+
+    return result.map(row => ({
+      ...row.cartItem,
+      variant: row.variant || undefined,
+      product: row.product || undefined,
+    }));
+  }
+
   async addToCart(cartItem: InsertCartItem): Promise<CartItem> {
-    // Check if item already exists in cart
+    // Check if item already exists in cart (considering both product and variant)
+    const conditions = [
+      eq(cartItems.userId, cartItem.userId),
+      eq(cartItems.productId, cartItem.productId)
+    ];
+
+    // Add variant condition if provided
+    if (cartItem.variantId) {
+      conditions.push(eq(cartItems.variantId, cartItem.variantId));
+    } else {
+      // If no variant provided, look for items without variants
+      conditions.push(sql`${cartItems.variantId} IS NULL`);
+    }
+
     const [existingItem] = await db
       .select()
       .from(cartItems)
-      .where(and(eq(cartItems.userId, cartItem.userId), eq(cartItems.productId, cartItem.productId)));
+      .where(and(...conditions));
 
     if (existingItem) {
       // Update quantity
