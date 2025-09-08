@@ -14,6 +14,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
+import OrderDetail from "@/pages/OrderDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Profile from "@/pages/Profile";
@@ -37,22 +38,21 @@ import Careers from "@/pages/Careers";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
-import ScrollToTop from "./ScrollToTop";
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   // Initialize theme system
   useTheme();
 
   return (
-    <ScrollToTop>
     <Switch>
-      
       <Route path="/landing" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
       <Route path="/products/:id" component={ProductDetail} />
+      <Route path="/order/:orderId" component={OrderDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/profile" component={Profile} />
@@ -77,9 +77,7 @@ function Router() {
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/sitemap" component={Sitemap} />
       <Route component={NotFound} />
-    
     </Switch>
-    </ScrollToTop>
   );
 }
 

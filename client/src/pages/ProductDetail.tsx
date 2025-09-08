@@ -167,7 +167,7 @@ export default function ProductDetail() {
       });
       return;
     }
-    addToCart(currentVariant.id, quantity);
+    addToCart(product.id, quantity, currentVariant.id);
   };
 
   // Set default selections when variants are loaded
@@ -413,7 +413,7 @@ export default function ProductDetail() {
                     {getAvailableSizes().map((size) => {
                       const sizeVariants = variants.filter(v => `${v.size} ${v.unit}` === size);
                       const hasStock = sizeVariants.some(v => (v.stock || 0) > 0);
-                      const minPrice = Math.min(...sizeVariants.map(v => v.salePrice || v.price));
+                      const minPrice = Math.min(...sizeVariants.map(v => parseFloat(v.salePrice || v.price)));
                       const isSelected = selectedSize === size;
                       
                       return (

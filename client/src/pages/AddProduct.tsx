@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Upload, X, Star, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Upload, X, Star, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -17,6 +17,17 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Category } from "@shared/schema";
 
+// Product variant interface
+interface ProductVariantForm {
+  size: string;
+  unit: string;
+  flavor: string;
+  price: string;
+  salePrice: string;
+  stock: string;
+  sku: string;
+}
+
 export default function AddProduct() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { toast } = useToast();
@@ -31,15 +42,27 @@ export default function AddProduct() {
     slug: "",
     description: "",
     shortDescription: "",
-    price: "",
+    price: "", // Base price for display
     salePrice: "",
     categoryId: "",
     fitnessLevel: "none",
-    stock: "",
     isFeatured: false,
     featuredImage: "",
     images: [] as string[],
   });
+
+  // Product variants state
+  const [variants, setVariants] = useState<ProductVariantForm[]>([
+    {
+      size: "",
+      unit: "gm",
+      flavor: "",
+      price: "",
+      salePrice: "",
+      stock: "0",
+      sku: "",
+    },
+  ]);
 
   // Check authorization
   useEffect(() => {
@@ -75,9 +98,11 @@ export default function AddProduct() {
 
   // Create product mutation
   const createProductMutation = useMutation({
-    mutationFn: async (productData: any) => {
+    mutationFn: async ({ productData, variants }: { productData: any, variants: ProductVariantForm[] }) => {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/products', {
+      
+      // First create the product
+      const productResponse = await fetch('/api/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,12 +111,44 @@ export default function AddProduct() {
         body: JSON.stringify(productData),
       });
       
-      if (!response.ok) {
-        const error = await response.json();
+      if (!productResponse.ok) {
+        const error = await productResponse.json();
         throw new Error(error.message || 'Failed to create product');
       }
       
-      return response.json();
+      const product = await productResponse.json();
+      
+      // Then create variants for the product
+      const variantPromises = variants.map(async (variant) => {
+        const variantData = {
+          productId: product.id,
+          size: variant.size,
+          unit: variant.unit,
+          flavor: variant.flavor || null,
+          price: parseFloat(variant.price),
+          salePrice: variant.salePrice ? parseFloat(variant.salePrice) : null,
+          stock: parseInt(variant.stock) || 0,
+          sku: variant.sku || null,
+        };
+        
+        const variantResponse = await fetch(`/api/products/${product.id}/variants`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(variantData),
+        });
+        
+        if (!variantResponse.ok) {
+          console.error('Failed to create variant:', variantData);
+        }
+        
+        return variantResponse.json();
+      });
+      
+      await Promise.all(variantPromises);
+      return product;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -133,6 +190,17 @@ export default function AddProduct() {
       return;
     }
 
+    // Validate variants
+    const validVariants = variants.filter(v => v.size && v.price);
+    if (validVariants.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "At least one variant with size and price is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const productData = {
       name: productForm.name,
       slug: productForm.slug,
@@ -142,12 +210,11 @@ export default function AddProduct() {
       salePrice: productForm.salePrice ? parseFloat(productForm.salePrice) : null,
       categoryId: productForm.categoryId === 'none' ? null : productForm.categoryId || null,
       fitnessLevel: productForm.fitnessLevel === 'none' ? null : productForm.fitnessLevel || null,
-      stock: parseInt(productForm.stock) || 0,
       isFeatured: productForm.isFeatured,
       images: [productForm.featuredImage, ...productForm.images].filter(Boolean),
     };
 
-    createProductMutation.mutate(productData);
+    createProductMutation.mutate({ productData, variants: validVariants });
   };
 
   const handleFeaturedImageUpload = async (files: FileList | null) => {
@@ -255,6 +322,31 @@ export default function AddProduct() {
     }
   };
 
+  // Variant management functions
+  const addVariant = () => {
+    setVariants(prev => [...prev, {
+      size: "",
+      unit: "gm",
+      flavor: "",
+      price: "",
+      salePrice: "",
+      stock: "0",
+      sku: "",
+    }]);
+  };
+
+  const removeVariant = (index: number) => {
+    if (variants.length > 1) {
+      setVariants(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateVariant = (index: number, field: keyof ProductVariantForm, value: string) => {
+    setVariants(prev => prev.map((variant, i) => 
+      i === index ? { ...variant, [field]: value } : variant
+    ));
+  };
+
   if (isLoading || !isAuthenticated || user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -351,18 +443,6 @@ export default function AddProduct() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="stock">Stock Quantity</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    min="0"
-                    value={productForm.stock}
-                    onChange={(e) => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
-                    placeholder="0"
-                    data-testid="input-product-stock"
-                  />
-                </div>
 
                 <div>
                   <Label htmlFor="category">Category</Label>
@@ -443,6 +523,147 @@ export default function AddProduct() {
                   <span>Featured Product</span>
                 </Label>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Variants */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Product Variants
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addVariant}
+                  data-testid="button-add-variant"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Variant
+                </Button>
+              </CardTitle>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Add different sizes, flavors, and pricing options for this product
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {variants.map((variant, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Variant {index + 1}</h4>
+                    {variants.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeVariant(index)}
+                        data-testid={`button-remove-variant-${index}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor={`size-${index}`}>Size *</Label>
+                      <Input
+                        id={`size-${index}`}
+                        value={variant.size}
+                        onChange={(e) => updateVariant(index, 'size', e.target.value)}
+                        placeholder="500, 1000, 2.5"
+                        data-testid={`input-variant-size-${index}`}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`unit-${index}`}>Unit *</Label>
+                      <Select 
+                        value={variant.unit} 
+                        onValueChange={(value) => updateVariant(index, 'unit', value)}
+                      >
+                        <SelectTrigger data-testid={`select-variant-unit-${index}`}>
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gm">Grams (gm)</SelectItem>
+                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                          <SelectItem value="ml">Milliliters (ml)</SelectItem>
+                          <SelectItem value="l">Liters (l)</SelectItem>
+                          <SelectItem value="oz">Ounces (oz)</SelectItem>
+                          <SelectItem value="lbs">Pounds (lbs)</SelectItem>
+                          <SelectItem value="pcs">Pieces (pcs)</SelectItem>
+                          <SelectItem value="caps">Capsules (caps)</SelectItem>
+                          <SelectItem value="tabs">Tablets (tabs)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`flavor-${index}`}>Flavor</Label>
+                      <Input
+                        id={`flavor-${index}`}
+                        value={variant.flavor}
+                        onChange={(e) => updateVariant(index, 'flavor', e.target.value)}
+                        placeholder="Chocolate, Vanilla, etc."
+                        data-testid={`input-variant-flavor-${index}`}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`price-${index}`}>Price *</Label>
+                      <Input
+                        id={`price-${index}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={variant.price}
+                        onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                        placeholder="0.00"
+                        data-testid={`input-variant-price-${index}`}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`salePrice-${index}`}>Sale Price</Label>
+                      <Input
+                        id={`salePrice-${index}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={variant.salePrice}
+                        onChange={(e) => updateVariant(index, 'salePrice', e.target.value)}
+                        placeholder="0.00"
+                        data-testid={`input-variant-sale-price-${index}`}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`stock-${index}`}>Stock</Label>
+                      <Input
+                        id={`stock-${index}`}
+                        type="number"
+                        min="0"
+                        value={variant.stock}
+                        onChange={(e) => updateVariant(index, 'stock', e.target.value)}
+                        placeholder="0"
+                        data-testid={`input-variant-stock-${index}`}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`sku-${index}`}>SKU</Label>
+                      <Input
+                        id={`sku-${index}`}
+                        value={variant.sku}
+                        onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                        placeholder="Optional SKU"
+                        data-testid={`input-variant-sku-${index}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
 

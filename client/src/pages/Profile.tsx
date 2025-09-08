@@ -528,10 +528,12 @@ export default function Profile() {
                           </div>
                         </div>
                         <div className="flex space-x-2">
-                          <Button size="sm" variant="outline" data-testid={`view-order-${order.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
+                          <Link href={`/order/${order.id}`}>
+                            <Button size="sm" variant="outline" data-testid={`view-order-${order.id}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
                           <Button size="sm" variant="outline" data-testid={`reorder-${order.id}`}>
                             Reorder
                           </Button>

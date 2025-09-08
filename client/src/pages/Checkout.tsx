@@ -129,16 +129,23 @@ export default function Checkout() {
     return products?.find(p => p.id === productId);
   };
 
-  const calculateItemTotal = (productId: string, quantity: number) => {
-    const product = getProductById(productId);
-    if (!product) return 0;
-    const price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
-    return price * quantity;
+  const calculateItemTotal = (item: any) => {
+    // Use variant price if available, otherwise fallback to product price
+    let price = 0;
+    if (item.variant?.price) {
+      price = item.variant.salePrice ? parseFloat(item.variant.salePrice) : parseFloat(item.variant.price);
+    } else {
+      const product = getProductById(item.productId);
+      if (product) {
+        price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
+      }
+    }
+    return price * item.quantity;
   };
 
   const calculateCartTotal = () => {
     return cartItems.reduce((total, item) => {
-      return total + calculateItemTotal(item.productId, item.quantity);
+      return total + calculateItemTotal(item);
     }, 0);
   };
 
@@ -258,7 +265,7 @@ export default function Checkout() {
                       id="street"
                       value={shippingAddress.street}
                       onChange={(e) => handleAddressChange("street", e.target.value)}
-                      placeholder="123 Main St"
+                      placeholder="1456 Main Bazzar"
                       required
                       data-testid="street-input"
                     />
@@ -271,7 +278,7 @@ export default function Checkout() {
                         id="city"
                         value={shippingAddress.city}
                         onChange={(e) => handleAddressChange("city", e.target.value)}
-                        placeholder="New York"
+                        placeholder="Sirsa"
                         required
                         data-testid="city-input"
                       />
@@ -308,7 +315,7 @@ export default function Checkout() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="US">United States</SelectItem>
+                          <SelectItem value="IN">India</SelectItem>
                           <SelectItem value="CA">Canada</SelectItem>
                           <SelectItem value="MX">Mexico</SelectItem>
                         </SelectContent>
@@ -434,7 +441,14 @@ export default function Checkout() {
                       const product = getProductById(item.productId);
                       if (!product) return null;
 
-                      const price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
+                      // Use variant price if available, otherwise fallback to product price
+                      let price = 0;
+                      if (item.variant?.price) {
+                        price = item.variant.salePrice ? parseFloat(item.variant.salePrice) : parseFloat(item.variant.price);
+                      } else {
+                        price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
+                      }
+                      
                       const imageUrl = product.images?.[0] || "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100";
 
                       return (
@@ -448,12 +462,20 @@ export default function Checkout() {
                           </div>
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">{product.name}</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {item.variant && (
+                              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                                <span className="font-medium">{item.variant.size} {item.variant.unit}</span>
+                                {item.variant.flavor && (
+                                  <span className="ml-2">• {item.variant.flavor}</span>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               {formatPrice(price)} × {item.quantity}
                             </p>
                           </div>
                           <div className="font-medium">
-                            {formatPrice(calculateItemTotal(item.productId, item.quantity))}
+                            {formatPrice(calculateItemTotal(item))}
                           </div>
                         </div>
                       );

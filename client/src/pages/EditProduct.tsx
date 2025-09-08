@@ -125,17 +125,19 @@ export default function EditProduct() {
         sku: variant.sku || "",
       }));
       setVariants(variantForms);
-    } else if (existingVariants && existingVariants.length === 0 && variants.length === 0) {
-      // Add default variant if none exist
-      setVariants([{
-        size: "",
-        unit: "gm",
-        flavor: "",
-        price: "",
-        salePrice: "",
-        stock: "0",
-        sku: "",
-      }]);
+    } else if (existingVariants && existingVariants.length === 0) {
+      // Only add default variant if none exist and variants state is also empty
+      if (variants.length === 0) {
+        setVariants([{
+          size: "",
+          unit: "gm",
+          flavor: "",
+          price: "",
+          salePrice: "",
+          stock: "0",
+          sku: "",
+        }]);
+      }
     }
   }, [existingVariants]);
 
