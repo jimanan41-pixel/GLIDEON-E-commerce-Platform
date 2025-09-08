@@ -63,8 +63,6 @@ export const products = pgTable("products", {
   shortDescription: text("short_description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   salePrice: decimal("sale_price", { precision: 10, scale: 2 }),
-  sku: varchar("sku").unique(),
-  stock: integer("stock").default(0),
   categoryId: varchar("category_id").references(() => categories.id),
   fitnessLevel: varchar("fitness_level"), // beginner, intermediate, advanced, professional
   images: jsonb("images").$type<string[]>().default([]),
@@ -77,11 +75,28 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Product Variants table for different sizes, flavors, and pricing
+export const productVariants = pgTable("product_variants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  size: varchar("size").notNull(), // e.g., "500", "1000", "2.5"
+  unit: varchar("unit").notNull(), // e.g., "gm", "kg", "ml", "oz", "lbs"
+  flavor: varchar("flavor"), // e.g., "Chocolate", "Strawberry", "Vanilla", null for unflavored
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  salePrice: decimal("sale_price", { precision: 10, scale: 2 }),
+  sku: varchar("sku").unique(),
+  stock: integer("stock").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Cart items table
 export const cartItems = pgTable("cart_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
   productId: varchar("product_id").references(() => products.id).notNull(),
+  variantId: varchar("variant_id").references(() => productVariants.id), // Optional for backward compatibility
   quantity: integer("quantity").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -112,8 +127,12 @@ export const orderItems = pgTable("order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").references(() => orders.id).notNull(),
   productId: varchar("product_id").references(() => products.id).notNull(),
+  variantId: varchar("variant_id").references(() => productVariants.id), // Optional for backward compatibility
   quantity: integer("quantity").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  size: varchar("size"), // Store variant details at time of order
+  unit: varchar("unit"),
+  flavor: varchar("flavor"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -220,9 +239,17 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     fields: [products.categoryId],
     references: [categories.id],
   }),
+  variants: many(productVariants),
   cartItems: many(cartItems),
   orderItems: many(orderItems),
   reviews: many(reviews),
+}));
+
+export const productVariantsRelations = relations(productVariants, ({ one }) => ({
+  product: one(products, {
+    fields: [productVariants.productId],
+    references: [products.id],
+  }),
 }));
 
 export const cartItemsRelations = relations(cartItems, ({ one }) => ({
@@ -233,6 +260,10 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   product: one(products, {
     fields: [cartItems.productId],
     references: [products.id],
+  }),
+  variant: one(productVariants, {
+    fields: [cartItems.variantId],
+    references: [productVariants.id],
   }),
 }));
 
@@ -252,6 +283,10 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   product: one(products, {
     fields: [orderItems.productId],
     references: [products.id],
+  }),
+  variant: one(productVariants, {
+    fields: [orderItems.variantId],
+    references: [productVariants.id],
   }),
 }));
 
@@ -280,7 +315,7 @@ export const wishlistRelations = relations(wishlist, ({ one }) => ({
   }),
   product: one(products, {
     fields: [wishlist.productId],
-    references: [wishlist.productId],
+    references: [products.id],
   }),
 }));
 
@@ -307,6 +342,19 @@ export const insertProductSchema = createInsertSchema(products)
   })
   .extend({
     // Allow price to accept both string and number, convert to string
+    price: z.union([z.string(), z.number()]).transform(val => String(val)),
+    salePrice: z.union([z.string(), z.number(), z.null(), z.undefined()]).transform(val => 
+      val === null || val === undefined ? null : String(val)
+    ).optional(),
+  });
+
+export const insertProductVariantSchema = createInsertSchema(productVariants)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
     price: z.union([z.string(), z.number()]).transform(val => String(val)),
     salePrice: z.union([z.string(), z.number(), z.null(), z.undefined()]).transform(val => 
       val === null || val === undefined ? null : String(val)
@@ -377,8 +425,8 @@ export const offers = pgTable("offers", {
   description: text("description"),
   code: varchar("code", { length: 50 }).unique().notNull(), // Required discount code for checkout
   discountType: varchar("discount_type").notNull(), // percentage, fixed, bogo
-  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
-  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }),
+  discountValue: varchar("discount_value").notNull(), // Keep as varchar to match existing data
+  minOrderAmount: varchar("min_order_amount"), // Keep as varchar to match existing data
   bannerImageUrl: varchar("banner_image_url"),
   bannerText: text("banner_text"),
   startDate: timestamp("start_date").defaultNow(),
@@ -405,6 +453,8 @@ export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type ProductVariant = typeof productVariants.$inferSelect;
+export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type Order = typeof orders.$inferSelect;
