@@ -31,7 +31,7 @@ export function useTheme() {
       primaryColor: "#DC2626",
       secondaryColor: "#1F2937", 
       accentColor: "#F59E0B",
-      fontFamily: "Inter",
+      fontFamily: "Lato",
       darkMode: true
     };
 

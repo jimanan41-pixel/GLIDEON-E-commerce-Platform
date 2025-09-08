@@ -7,7 +7,7 @@ import type { CartItem, Product } from "@shared/schema";
 interface CartContextType {
   cartItems: CartItem[];
   isLoading: boolean;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, variantId?: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -47,7 +47,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetchCartItems();
   }, [isAuthenticated]);
 
-  const addToCart = async (productId: string, quantity = 1) => {
+  const addToCart = async (productId: string, quantity = 1, variantId?: string) => {
     if (!isAuthenticated) {
       toast({
         title: "Sign in required",
@@ -58,8 +58,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log("Attempting to add to cart:", productId, quantity);
-      const response = await apiRequest("POST", "/api/cart", { productId, quantity });
+      console.log("Attempting to add to cart:", productId, quantity, variantId ? `variant: ${variantId}` : "no variant");
+      const requestData = variantId 
+        ? { productId, quantity, variantId }
+        : { productId, quantity };
+      const response = await apiRequest("POST", "/api/cart", requestData);
       console.log("Cart response received:", response.status);
       await fetchCartItems();
       toast({

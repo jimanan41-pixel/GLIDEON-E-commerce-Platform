@@ -27,16 +27,23 @@ export default function CartModal() {
     return products?.find(p => p.id === productId);
   };
 
-  const calculateItemTotal = (productId: string, quantity: number) => {
-    const product = getProductById(productId);
-    if (!product) return 0;
-    const price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
-    return price * quantity;
+  const calculateItemTotal = (item: any) => {
+    // Use variant price if available, otherwise fallback to product price
+    let price = 0;
+    if (item.variant?.price) {
+      price = item.variant.salePrice ? parseFloat(item.variant.salePrice) : parseFloat(item.variant.price);
+    } else {
+      const product = getProductById(item.productId);
+      if (product) {
+        price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
+      }
+    }
+    return price * item.quantity;
   };
 
   const calculateCartTotal = () => {
     return cartItems.reduce((total, item) => {
-      return total + calculateItemTotal(item.productId, item.quantity);
+      return total + calculateItemTotal(item);
     }, 0);
   };
 
@@ -46,7 +53,7 @@ export default function CartModal() {
         <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-700">
           <SheetTitle className="flex items-center justify-between" data-testid="cart-title">
             <span>Shopping Cart</span>
-            {/* <Button
+            <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsCartOpen(false)}
@@ -54,7 +61,7 @@ export default function CartModal() {
               data-testid="close-cart"
             >
               <X className="h-4 w-4" />
-            </Button> */}
+            </Button>
           </SheetTitle>
         </SheetHeader>
 
@@ -76,7 +83,14 @@ export default function CartModal() {
                 const product = getProductById(item.productId);
                 if (!product) return null;
 
-                const price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
+                // Use variant price if available, otherwise fallback to product price
+                let price = 0;
+                if (item.variant?.price) {
+                  price = item.variant.salePrice ? parseFloat(item.variant.salePrice) : parseFloat(item.variant.price);
+                } else {
+                  price = product.salePrice ? parseFloat(product.salePrice) : parseFloat(product.price);
+                }
+                
                 const imageUrl = product.images?.[0] || "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=100";
 
                 return (
@@ -97,7 +111,15 @@ export default function CartModal() {
                       <h3 className="font-medium text-gray-900 dark:text-white" data-testid={`cart-item-name-${item.id}`}>
                         {product.name}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`cart-item-price-${item.id}`}>
+                      {item.variant && (
+                        <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                          <span className="font-medium">{item.variant.size} {item.variant.unit}</span>
+                          {item.variant.flavor && (
+                            <span className="ml-2">• {item.variant.flavor}</span>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1" data-testid={`cart-item-price-${item.id}`}>
                         ${price.toFixed(2)}
                       </p>
                       <div className="flex items-center justify-between mt-2">
@@ -125,7 +147,7 @@ export default function CartModal() {
                           </Button>
                         </div>
                         <span className="font-semibold text-gray-900 dark:text-white" data-testid={`cart-item-total-${item.id}`}>
-                          {formatPrice(calculateItemTotal(item.productId, item.quantity))}
+                          {formatPrice(calculateItemTotal(item))}
                         </span>
                       </div>
                     </div>
