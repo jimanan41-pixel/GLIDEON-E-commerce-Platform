@@ -1,3 +1,4 @@
+import "dotenv/config";
 import {
   users,
   categories,
@@ -42,7 +43,6 @@ import {
   type SiteSetting,
   type InsertSiteSetting,
 } from "@shared/schema";
-import "dotenv/config";
 import { db } from "./db";
 import { eq, and, desc, like, ilike, sql, isNull } from "drizzle-orm";
 
@@ -95,6 +95,7 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
   getOrderItems(orderId: string): Promise<OrderItem[]>;
+  getOrderItemsWithVariants(orderId: string): Promise<any[]>;
   createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem>;
   
   // CMS operations
@@ -344,6 +345,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(productVariants).set({ isActive: false }).where(eq(productVariants.id, id));
   }
 
+  async deleteProductVariants(productId: string): Promise<void> {
+    await db.delete(productVariants).where(eq(productVariants.productId, productId));
+  }
+
   async getVariantsByProduct(productId: string): Promise<ProductVariant[]> {
     return await db.select().from(productVariants).where(and(eq(productVariants.productId, productId), eq(productVariants.isActive, true))).orderBy(productVariants.size, productVariants.flavor);
   }
@@ -454,6 +459,35 @@ export class DatabaseStorage implements IStorage {
 
   async getOrderItems(orderId: string): Promise<OrderItem[]> {
     return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  }
+
+  async getOrderItemsWithVariants(orderId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: orderItems.id,
+        orderId: orderItems.orderId,
+        productId: orderItems.productId,
+        variantId: orderItems.variantId,
+        quantity: orderItems.quantity,
+        price: orderItems.price,
+        product: {
+          id: products.id,
+          name: products.name,
+          images: products.images,
+        },
+        variant: {
+          id: productVariants.id,
+          size: productVariants.size,
+          unit: productVariants.unit,
+          flavor: productVariants.flavor,
+          price: productVariants.price,
+          salePrice: productVariants.salePrice,
+        },
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .leftJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .where(eq(orderItems.orderId, orderId));
   }
 
   async createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem> {

@@ -587,6 +587,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all variants for a product
+  app.delete('/api/products/:productId/variants', authenticateJWT, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      await storage.deleteProductVariants(req.params.productId);
+      res.json({ message: "Product variants deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting product variants:", error);
+      res.status(500).json({ message: "Failed to delete product variants" });
+    }
+  });
+
   app.delete('/api/variants/:id', authenticateJWT, async (req: any, res) => {
     try {
       if (req.user?.role !== 'admin') {
@@ -605,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cart', authenticateJWT, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const cartItems = await storage.getCartItems(userId);
+      const cartItems = await storage.getCartItemsWithVariants(userId);
       res.json(cartItems);
     } catch (error) {
       console.error("Error fetching cart:", error);
@@ -666,6 +681,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  app.get('/api/orders/:orderId', authenticateJWT, async (req: any, res) => {
+    try {
+      const orderId = req.params.orderId;
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      const order = await storage.getOrderById(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // Check if user owns the order or is admin
+      if (user?.role !== 'admin' && order.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  app.get('/api/orders/:orderId/items', authenticateJWT, async (req: any, res) => {
+    try {
+      const orderId = req.params.orderId;
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      // First check if user has access to this order
+      const order = await storage.getOrderById(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      if (user?.role !== 'admin' && order.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const orderItems = await storage.getOrderItemsWithVariants(orderId);
+      res.json(orderItems);
+    } catch (error) {
+      console.error("Error fetching order items:", error);
+      res.status(500).json({ message: "Failed to fetch order items" });
     }
   });
 
@@ -795,8 +857,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/orders', authenticateJWT, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      
+      // Get current cart items with variants before creating order
+      const cartItems = await storage.getCartItemsWithVariants(userId);
+      if (cartItems.length === 0) {
+        return res.status(400).json({ message: "Cart is empty" });
+      }
+      
       const orderData = insertOrderSchema.parse({ ...req.body, userId });
       const order = await storage.createOrder(orderData);
+      
+      // Create order items from cart items (including variant information)
+      for (const cartItem of cartItems) {
+        await storage.createOrderItem({
+          orderId: order.id,
+          productId: cartItem.productId,
+          variantId: cartItem.variantId,
+          quantity: cartItem.quantity,
+          price: cartItem.variant?.price || cartItem.product?.price || "0",
+        });
+      }
       
       // Clear cart after successful order
       await storage.clearCart(userId);
