@@ -15,12 +15,15 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatPrice } from "@/lib/utils";
-import type { Product, Review } from "@shared/schema";
+import type { Product, Review, ProductVariant } from "@shared/schema";
 
 export default function ProductDetail() {
-  const { slug } = useParams();
+  const { id } = useParams();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedFlavor, setSelectedFlavor] = useState<string>("");
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   
   // Get product images from database or fallback to placeholder
   const getProductImages = (product: Product) => {
@@ -38,9 +41,9 @@ export default function ProductDetail() {
   const queryClient = useQueryClient();
 
   const { data: product, isLoading } = useQuery<Product>({
-    queryKey: ["/api/products", slug],
+    queryKey: ["/api/products", id],
     queryFn: async () => {
-      const response = await fetch(`/api/products/${slug}`);
+      const response = await fetch(`/api/products/${id}`);
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error("Product not found");
@@ -49,6 +52,17 @@ export default function ProductDetail() {
       }
       return response.json();
     },
+    enabled: !!id,
+  });
+
+  const { data: variants, isLoading: variantsLoading } = useQuery<ProductVariant[]>({
+    queryKey: ["/api/products", id, "variants"],
+    queryFn: async () => {
+      const response = await fetch(`/api/products/${id}/variants`);
+      if (!response.ok) throw new Error("Failed to fetch variants");
+      return response.json();
+    },
+    enabled: !!product?.id,
   });
 
   const { data: reviews } = useQuery<Review[]>({
@@ -94,10 +108,103 @@ export default function ProductDetail() {
     },
   });
 
-  const handleAddToCart = () => {
-    if (!product) return;
-    addToCart(product.id, quantity);
+  // Helper functions for variant management
+  const getAvailableSizes = () => {
+    if (!variants) return [];
+    const sizes = new Set<string>();
+    variants.forEach(variant => {
+      const sizeKey = `${variant.size} ${variant.unit}`;
+      sizes.add(sizeKey);
+    });
+    return Array.from(sizes);
   };
+
+  const getAvailableFlavors = (selectedSizeKey?: string) => {
+    if (!variants) return [];
+    let filteredVariants = variants;
+    
+    if (selectedSizeKey) {
+      filteredVariants = variants.filter(variant => 
+        `${variant.size} ${variant.unit}` === selectedSizeKey
+      );
+    }
+    
+    const flavors = new Set<string>();
+    filteredVariants.forEach(variant => {
+      if (variant.flavor) {
+        flavors.add(variant.flavor);
+      }
+    });
+    
+    // Add "No Flavor" option if there are variants without flavor
+    if (filteredVariants.some(v => !v.flavor)) {
+      flavors.add("No Flavor");
+    }
+    
+    return Array.from(flavors);
+  };
+
+  const getCurrentVariant = () => {
+    if (!variants || !selectedSize) return null;
+    
+    return variants.find(variant => {
+      const sizeMatch = `${variant.size} ${variant.unit}` === selectedSize;
+      const flavorMatch = selectedFlavor === "No Flavor" 
+        ? !variant.flavor 
+        : variant.flavor === selectedFlavor;
+      
+      return sizeMatch && (selectedFlavor ? flavorMatch : true);
+    }) || null;
+  };
+
+  const handleAddToCart = () => {
+    const currentVariant = getCurrentVariant();
+    if (!product || !currentVariant) {
+      toast({
+        title: "Please select all options",
+        description: "Choose size and flavor before adding to cart",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToCart(currentVariant.id, quantity);
+  };
+
+  // Set default selections when variants are loaded
+  useEffect(() => {
+    if (variants && variants.length > 0 && !selectedSize) {
+      const firstVariant = variants[0];
+      const firstSize = `${firstVariant.size} ${firstVariant.unit}`;
+      setSelectedSize(firstSize);
+      
+      const availableFlavors = getAvailableFlavors(firstSize);
+      if (availableFlavors.length > 0) {
+        setSelectedFlavor(availableFlavors[0]);
+      }
+    }
+  }, [variants, selectedSize]);
+
+  // Auto-select first available flavor when size changes
+  useEffect(() => {
+    if (selectedSize && variants) {
+      const availableFlavors = getAvailableFlavors(selectedSize);
+      if (availableFlavors.length > 0) {
+        // If current flavor is not available for this size, select the first available one
+        if (!selectedFlavor || !availableFlavors.includes(selectedFlavor)) {
+          setSelectedFlavor(availableFlavors[0]);
+        }
+      } else {
+        // No flavors available for this size, clear selection
+        setSelectedFlavor("");
+      }
+    }
+  }, [selectedSize, variants]);
+
+  // Update selected variant when size or flavor changes
+  useEffect(() => {
+    const currentVariant = getCurrentVariant();
+    setSelectedVariant(currentVariant);
+  }, [selectedSize, selectedFlavor, variants]);
 
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +217,7 @@ export default function ProductDetail() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || variantsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
@@ -151,11 +258,13 @@ export default function ProductDetail() {
     );
   }
 
-  const price = parseFloat(product.price);
-  const salePrice = product.salePrice ? parseFloat(product.salePrice) : null;
+  // Use selected variant pricing or fallback to product pricing
+  const price = selectedVariant ? Number(selectedVariant.price) : parseFloat(product.price);
+  const salePrice = selectedVariant?.salePrice ? Number(selectedVariant.salePrice) : (product.salePrice ? parseFloat(product.salePrice) : null);
   const discount = salePrice ? Math.round(((price - salePrice) / price) * 100) : 0;
   const currentPrice = salePrice || price;
   const images = getProductImages(product);
+  const currentStock = selectedVariant?.stock ? Number(selectedVariant.stock) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -292,11 +401,120 @@ export default function ProductDetail() {
               {product.shortDescription || product.description}
             </p>
 
+            {/* Size and Flavor Selection */}
+            {variants && variants.length > 0 && (
+              <div className="mb-6 space-y-4">
+                <h3 className="text-lg font-medium">Select Options</h3>
+                
+                {/* Size Selection */}
+                <div>
+                  <label className="block text-sm font-medium mb-3">Size *</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {getAvailableSizes().map((size) => {
+                      const sizeVariants = variants.filter(v => `${v.size} ${v.unit}` === size);
+                      const hasStock = sizeVariants.some(v => (v.stock || 0) > 0);
+                      const minPrice = Math.min(...sizeVariants.map(v => v.salePrice || v.price));
+                      const isSelected = selectedSize === size;
+                      
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => hasStock && setSelectedSize(size)}
+                          disabled={!hasStock}
+                          className={`p-4 border-2 rounded-lg text-center transition-all duration-200 ${
+                            isSelected
+                              ? "border-glideon-red bg-red-50 dark:bg-red-950 text-glideon-red"
+                              : hasStock
+                              ? "border-gray-200 dark:border-gray-700 hover:border-glideon-red hover:bg-red-50 dark:hover:bg-red-950 text-gray-900 dark:text-white"
+                              : "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+                          }`}
+                          data-testid={`size-tile-${size.replace(/ /g, '-')}`}
+                        >
+                          <div className="font-medium text-sm mb-1">{size}</div>
+                          <div className="text-xs">
+                            {hasStock ? `from ${formatPrice(minPrice)}` : 'Out of stock'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Flavor Selection */}
+                {selectedSize && getAvailableFlavors(selectedSize).length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-3">Flavor</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {getAvailableFlavors(selectedSize).map((flavor) => {
+                        const flavorVariant = variants.find(v => 
+                          `${v.size} ${v.unit}` === selectedSize && 
+                          (flavor === "No Flavor" ? !v.flavor : v.flavor === flavor)
+                        );
+                        const hasStock = flavorVariant && (flavorVariant.stock || 0) > 0;
+                        const isSelected = selectedFlavor === flavor;
+                        
+                        return (
+                          <button
+                            key={flavor}
+                            onClick={() => hasStock && setSelectedFlavor(flavor)}
+                            disabled={!hasStock}
+                            className={`p-4 border-2 rounded-lg text-center transition-all duration-200 ${
+                              isSelected
+                                ? "border-glideon-red bg-red-50 dark:bg-red-950 text-glideon-red"
+                                : hasStock
+                                ? "border-gray-200 dark:border-gray-700 hover:border-glideon-red hover:bg-red-50 dark:hover:bg-red-950 text-gray-900 dark:text-white"
+                                : "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+                            }`}
+                            data-testid={`flavor-tile-${flavor.replace(/ /g, '-')}`}
+                          >
+                            <div className="font-medium text-sm mb-1">
+                              {flavor === "No Flavor" ? "Original" : flavor}
+                            </div>
+                            {flavorVariant && (
+                              <div className="text-xs">
+                                {hasStock ? formatPrice(flavorVariant.salePrice || flavorVariant.price) : 'Out of stock'}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Current Selection Info */}
+                {selectedVariant && (
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">Selected: {selectedSize}</span>
+                      <span className="text-lg font-bold text-glideon-red">
+                        {formatPrice(selectedVariant.salePrice || selectedVariant.price)}
+                      </span>
+                    </div>
+                    {selectedFlavor && selectedFlavor !== "No Flavor" && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                        Flavor: {selectedFlavor}
+                      </div>
+                    )}
+                    {selectedVariant.salePrice && (
+                      <div className="text-sm text-gray-500 line-through mb-1">
+                        Original: {formatPrice(selectedVariant.price)}
+                      </div>
+                    )}
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {(selectedVariant.stock || 0) > 0 ? `${selectedVariant.stock || 0} in stock` : 'Out of stock'}
+                      {selectedVariant.sku && ` • SKU: ${selectedVariant.sku}`}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Stock Status */}
             <div className="mb-6">
-              {product.stock && product.stock > 0 ? (
+              {currentStock > 0 ? (
                 <span className="text-green-600 font-medium" data-testid="in-stock">
-                  In Stock ({product.stock} available)
+                  In Stock ({currentStock} available)
                 </span>
               ) : (
                 <span className="text-red-600 font-medium" data-testid="out-of-stock">
@@ -331,12 +549,12 @@ export default function ProductDetail() {
 
               <Button
                 onClick={handleAddToCart}
-                disabled={!product.stock || product.stock <= 0}
+                disabled={!selectedVariant || currentStock <= 0 || !selectedSize}
                 className="flex-1 bg-glideon-red hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-200"
                 data-testid="add-to-cart-button"
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
-                Add to Cart
+                {!selectedSize ? "Select Size" : !selectedVariant ? "Select Options" : currentStock <= 0 ? "Out of Stock" : "Add to Cart"}
               </Button>
 
               <Button
@@ -351,9 +569,9 @@ export default function ProductDetail() {
 
             {/* Product Details */}
             <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              {product.sku && (
+              {selectedVariant?.sku && (
                 <div data-testid="product-sku">
-                  <span className="font-medium">SKU:</span> {product.sku}
+                  <span className="font-medium">SKU:</span> {selectedVariant.sku}
                 </div>
               )}
               {product.weight && (

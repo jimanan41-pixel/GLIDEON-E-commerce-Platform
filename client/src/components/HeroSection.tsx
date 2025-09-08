@@ -110,11 +110,12 @@ export default function HeroSection() {
             <img 
               src={banner.imageUrl}
               alt={banner.title}
-              className="w-full h-full object-cover opacity-50"
+              className="w-full h-full object-cover opacity-100"
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent"></div>
+        {/* via-black/70 className="absolute inset-0 bg-gradient-to-r from-black  to-transparent" */}
+        <div ></div>
       </div>
 
       {/* Navigation Arrows */}

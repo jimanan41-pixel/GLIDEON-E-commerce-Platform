@@ -95,7 +95,7 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Lato', sans-serif;
   }
 }
 
@@ -126,4 +126,28 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+}
+.onhover
+{
+  cursor: pointer;
+}
+.fnt15
+{
+  font-size: 16px !important;
+}
+.fnt15:hover
+{
+  background-color: transparent !important;
+}
+.fnt13
+{
+  font-size: 13px;;
+}
+.fnt13:hover
+{
+  background-color: transparent !important;
+}
+.bgnone
+{
+  background-color: transparent !important;
 }

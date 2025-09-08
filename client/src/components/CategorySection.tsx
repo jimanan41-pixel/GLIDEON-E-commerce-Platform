@@ -50,8 +50,10 @@ export default function CategorySection() {
             categories.map((category) => (
               <div 
                 key={category.id}
-                className="group relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
-                data-testid={`category-${category.slug}`}
+                className="group onhover relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
+                data-testid={`category-${category.slug}`} onClick={() => {
+                  window.location.href = `/products?category=${category.slug}`;
+                }}
               >
                 <img 
                   src={category.imageUrl || categoryImages[category.slug as keyof typeof categoryImages] || categoryImages.supplements}

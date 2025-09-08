@@ -1,15 +1,62 @@
 import { Link } from "wouter";
-
+import { useQuery } from "@tanstack/react-query";
+interface SiteSetting {
+  key: string;
+  value: string;
+  type: string;
+  category: string;
+}
+interface LogoSettings {
+  logoUrl: string;
+  faviconUrl: string;
+  brandName: string;
+}
 export default function Footer() {
+  const { data: siteSettings } = useQuery<SiteSetting[]>({
+    queryKey: ["/api/site-settings"],
+  });
+
+  const getLogoSettings = (): LogoSettings => {
+    const logoData = siteSettings?.find(s => s.key === 'site_logo');
+    const defaultLogo = {
+      logoUrl: "",
+      faviconUrl: "",
+      brandName: "GLIDEON"
+    };
+
+    if (!logoData) return defaultLogo;
+    
+    try {
+      const parsed = JSON.parse(logoData.value || '{}');
+      
+      // Convert Google Cloud Storage URLs to local object URLs
+      if (parsed.logoUrl && parsed.logoUrl.includes('storage.googleapis.com')) {
+        // Extract the file path from the Google Cloud Storage URL
+        const matches = parsed.logoUrl.match(/\.private\/uploads\/([^?]+)/);
+        if (matches) {
+          parsed.logoUrl = `/objects/uploads/${matches[1]}`;
+        }
+      }
+      
+      return { ...defaultLogo, ...parsed };
+    } catch (error) {
+      console.error('Error parsing logo settings:', error);
+      return defaultLogo;
+    }
+  };
+
+  const logoSettings = getLogoSettings();
+
   const footerSections = [
     {
       title: "Shop",
       links: [
-        { href: "/products", label: "All Products" },
-        { href: "/products?category=bcca", label: "BCAA Supplements" },
-        { href: "/products?category=eaa", label: "EAA Supplements" },
-        { href: "/products?category=creatine-monohydrate", label: "Creatine" },
+        { href: "/products?category=intra-workout", label: "Intra Workout" },
+        { href: "/products?category=post-workout", label: "Post-Workout" },
         { href: "/products?category=pre-workout", label: "Pre-Workout" },
+        { href: "/products?category=protein", label: "Protein" },
+        { href: "/products?category=vitamins-and-health", label: "Vitamin and Health" },
+        { href: "/products?category=weight-management", label: "Weight Management" },
       ]
     },
     {
@@ -49,7 +96,32 @@ export default function Footer() {
           <div>
             <div className="flex items-center mb-6">
               <span className="text-3xl font-bold text-glideon-red tracking-wider" data-testid="footer-logo">
-                GLIDEON
+              {logoSettings.logoUrl ? (
+                <img 
+                  src={logoSettings.logoUrl} 
+                  alt={logoSettings.brandName || "GLIDEON"} 
+                  className="h-8 w-auto max-w-[200px] object-contain" 
+                  data-testid="logo-image"
+                  onError={(e) => {
+                    console.error('Logo failed to load:', logoSettings.logoUrl);
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    // Show brand name fallback
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('span');
+                      fallback.textContent = logoSettings.brandName || "GLIDEON";
+                      fallback.className = "text-2xl font-bold text-glideon-red tracking-wider";
+                      fallback.setAttribute('data-testid', 'logo-text-fallback');
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-2xl font-bold text-glideon-red tracking-wider" data-testid="logo-text">
+                  {logoSettings.brandName || "GLIDEON"}
+                </span>
+              )}
               </span>
             </div>
             <p className="text-gray-300 mb-6" data-testid="footer-description">
@@ -99,7 +171,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm" data-testid="footer-copyright">
-              © 2024 GLIDEON. All rights reserved.
+              © 2025 GLIDEON. All rights reserved.
             </div>
             <div className="flex items-center space-x-6 mt-4 md:mt-0">
               <div className="flex items-center space-x-2" data-testid="footer-secure-payment">

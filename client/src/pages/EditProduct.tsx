@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Upload, X, Star, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Upload, X, Star, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { Link, useLocation, useParams } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -14,7 +14,19 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Category, Product } from "@shared/schema";
+import type { Category, Product, ProductVariant } from "@shared/schema";
+
+// Product variant interface
+interface ProductVariantForm {
+  id?: string;
+  size: string;
+  unit: string;
+  flavor: string;
+  price: string;
+  salePrice: string;
+  stock: string;
+  sku: string;
+}
 
 export default function EditProduct() {
   const { id } = useParams();
@@ -31,15 +43,17 @@ export default function EditProduct() {
     slug: "",
     description: "",
     shortDescription: "",
-    price: "",
+    price: "", // Base price for display
     salePrice: "",
     categoryId: "",
     fitnessLevel: "none",
-    stock: "",
     isFeatured: false,
     featuredImage: "",
     images: [] as string[],
   });
+
+  // Product variants state
+  const [variants, setVariants] = useState<ProductVariantForm[]>([]);
 
   // Check authorization
   useEffect(() => {
@@ -67,6 +81,17 @@ export default function EditProduct() {
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
+  // Fetch existing variants
+  const { data: existingVariants, isLoading: variantsLoading } = useQuery<ProductVariant[]>({
+    queryKey: ["/api/products", id, "variants"],
+    queryFn: async () => {
+      const response = await fetch(`/api/products/${id}/variants`);
+      if (!response.ok) throw new Error("Failed to fetch variants");
+      return response.json();
+    },
+    enabled: !!product?.id,
+  });
+
   // Populate form when product loads
   useEffect(() => {
     if (product) {
@@ -79,7 +104,6 @@ export default function EditProduct() {
         salePrice: product.salePrice?.toString() || "",
         categoryId: product.categoryId || "none",
         fitnessLevel: product.fitnessLevel || "none",
-        stock: product.stock?.toString() || "0",
         isFeatured: product.isFeatured || false,
         featuredImage: product.images?.[0] || "",
         images: product.images?.slice(1) || [],
@@ -87,11 +111,66 @@ export default function EditProduct() {
     }
   }, [product]);
 
+  // Populate variants when existing variants load
+  useEffect(() => {
+    if (existingVariants && existingVariants.length > 0) {
+      const variantForms = existingVariants.map(variant => ({
+        id: variant.id,
+        size: variant.size,
+        unit: variant.unit,
+        flavor: variant.flavor || "",
+        price: variant.price.toString(),
+        salePrice: variant.salePrice?.toString() || "",
+        stock: variant.stock?.toString() || "0",
+        sku: variant.sku || "",
+      }));
+      setVariants(variantForms);
+    } else if (existingVariants && existingVariants.length === 0 && variants.length === 0) {
+      // Add default variant if none exist
+      setVariants([{
+        size: "",
+        unit: "gm",
+        flavor: "",
+        price: "",
+        salePrice: "",
+        stock: "0",
+        sku: "",
+      }]);
+    }
+  }, [existingVariants]);
+
+  // Variant management functions
+  const addVariant = () => {
+    setVariants(prev => [...prev, {
+      size: "",
+      unit: "gm",
+      flavor: "",
+      price: "",
+      salePrice: "",
+      stock: "0",
+      sku: "",
+    }]);
+  };
+
+  const removeVariant = (index: number) => {
+    if (variants.length > 1) {
+      setVariants(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateVariant = (index: number, field: keyof ProductVariantForm, value: string) => {
+    setVariants(prev => prev.map((variant, i) => 
+      i === index ? { ...variant, [field]: value } : variant
+    ));
+  };
+
   // Update product mutation
   const updateProductMutation = useMutation({
-    mutationFn: async (productData: any) => {
+    mutationFn: async ({ productData, variants }: { productData: any, variants: ProductVariantForm[] }) => {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/products/${id}`, {
+      
+      // First update the product
+      const productResponse = await fetch(`/api/products/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -100,12 +179,52 @@ export default function EditProduct() {
         body: JSON.stringify(productData),
       });
       
-      if (!response.ok) {
-        const error = await response.json();
+      if (!productResponse.ok) {
+        const error = await productResponse.json();
         throw new Error(error.message || 'Failed to update product');
       }
       
-      return response.json();
+      const product = await productResponse.json();
+      
+      // Delete existing variants first
+      await fetch(`/api/products/${id}/variants`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Then create new variants
+      const variantPromises = variants.map(async (variant) => {
+        const variantData = {
+          productId: id,
+          size: variant.size,
+          unit: variant.unit,
+          flavor: variant.flavor || null,
+          price: parseFloat(variant.price),
+          salePrice: variant.salePrice ? parseFloat(variant.salePrice) : null,
+          stock: parseInt(variant.stock) || 0,
+          sku: variant.sku || null,
+        };
+        
+        const variantResponse = await fetch(`/api/products/${id}/variants`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(variantData),
+        });
+        
+        if (!variantResponse.ok) {
+          console.error('Failed to create variant:', variantData);
+        }
+        
+        return variantResponse.json();
+      });
+      
+      await Promise.all(variantPromises);
+      return product;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -148,6 +267,17 @@ export default function EditProduct() {
       return;
     }
 
+    // Validate variants
+    const validVariants = variants.filter(v => v.size && v.price);
+    if (validVariants.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "At least one variant with size and price is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const productData = {
       name: productForm.name,
       slug: productForm.slug,
@@ -157,12 +287,11 @@ export default function EditProduct() {
       salePrice: productForm.salePrice ? parseFloat(productForm.salePrice) : null,
       categoryId: productForm.categoryId === 'none' ? null : productForm.categoryId || null,
       fitnessLevel: productForm.fitnessLevel === 'none' ? null : productForm.fitnessLevel || null,
-      stock: parseInt(productForm.stock) || 0,
       isFeatured: productForm.isFeatured,
       images: [productForm.featuredImage, ...productForm.images].filter(Boolean),
     };
 
-    updateProductMutation.mutate(productData);
+    updateProductMutation.mutate({ productData, variants: validVariants });
   };
 
   const handleFeaturedImageUpload = async (files: FileList | null) => {
@@ -374,7 +503,7 @@ export default function EditProduct() {
                 </div>
 
                 <div>
-                  <Label htmlFor="price">Price *</Label>
+                  <Label htmlFor="price">Base Price (Display Only) *</Label>
                   <Input
                     id="price"
                     type="number"
@@ -386,10 +515,13 @@ export default function EditProduct() {
                     required
                     data-testid="input-product-price"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used for listing display. Actual pricing is managed in variants below.
+                  </p>
                 </div>
 
                 <div>
-                  <Label htmlFor="salePrice">Sale Price</Label>
+                  <Label htmlFor="salePrice">Base Sale Price (Display Only)</Label>
                   <Input
                     id="salePrice"
                     type="number"
@@ -400,20 +532,11 @@ export default function EditProduct() {
                     placeholder="0.00"
                     data-testid="input-product-sale-price"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Optional base sale price for display purposes only.
+                  </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="stock">Stock Quantity</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    min="0"
-                    value={productForm.stock}
-                    onChange={(e) => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
-                    placeholder="0"
-                    data-testid="input-product-stock"
-                  />
-                </div>
 
                 <div>
                   <Label htmlFor="category">Category</Label>
@@ -494,6 +617,151 @@ export default function EditProduct() {
                   <span>Featured Product</span>
                 </Label>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Variants */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Product Variants
+                <Button 
+                  type="button" 
+                  onClick={addVariant}
+                  size="sm"
+                  data-testid="button-add-variant"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Variant
+                </Button>
+              </CardTitle>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Add different sizes, flavors, and pricing options for this product
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {variantsLoading ? (
+                <div className="text-center py-4">Loading variants...</div>
+              ) : (
+                variants.map((variant, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Variant {index + 1}</h4>
+                      {variants.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeVariant(index)}
+                          data-testid={`button-remove-variant-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`size-${index}`}>Size *</Label>
+                        <Input
+                          id={`size-${index}`}
+                          value={variant.size}
+                          onChange={(e) => updateVariant(index, 'size', e.target.value)}
+                          placeholder="e.g., 500, 1, 250"
+                          required
+                          data-testid={`input-variant-size-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`unit-${index}`}>Unit *</Label>
+                        <Select 
+                          value={variant.unit} 
+                          onValueChange={(value) => updateVariant(index, 'unit', value)}
+                        >
+                          <SelectTrigger data-testid={`select-variant-unit-${index}`}>
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="gm">Grams</SelectItem>
+                            <SelectItem value="kg">Kilograms</SelectItem>
+                            <SelectItem value="ml">Milliliters</SelectItem>
+                            <SelectItem value="ltr">Liters</SelectItem>
+                            <SelectItem value="pcs">Pieces</SelectItem>
+                            <SelectItem value="box">Box</SelectItem>
+                            <SelectItem value="bottle">Bottle</SelectItem>
+                            <SelectItem value="pack">Pack</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`flavor-${index}`}>Flavor</Label>
+                        <Input
+                          id={`flavor-${index}`}
+                          value={variant.flavor}
+                          onChange={(e) => updateVariant(index, 'flavor', e.target.value)}
+                          placeholder="e.g., Chocolate, Vanilla, Strawberry"
+                          data-testid={`input-variant-flavor-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`price-${index}`}>Price *</Label>
+                        <Input
+                          id={`price-${index}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={variant.price}
+                          onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                          placeholder="0.00"
+                          required
+                          data-testid={`input-variant-price-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`salePrice-${index}`}>Sale Price</Label>
+                        <Input
+                          id={`salePrice-${index}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={variant.salePrice}
+                          onChange={(e) => updateVariant(index, 'salePrice', e.target.value)}
+                          placeholder="0.00"
+                          data-testid={`input-variant-sale-price-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`stock-${index}`}>Stock</Label>
+                        <Input
+                          id={`stock-${index}`}
+                          type="number"
+                          min="0"
+                          value={variant.stock}
+                          onChange={(e) => updateVariant(index, 'stock', e.target.value)}
+                          placeholder="0"
+                          data-testid={`input-variant-stock-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                        <Label htmlFor={`sku-${index}`}>SKU</Label>
+                        <Input
+                          id={`sku-${index}`}
+                          value={variant.sku}
+                          onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                          placeholder="Product SKU/Code"
+                          data-testid={`input-variant-sku-${index}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 

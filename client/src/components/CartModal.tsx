@@ -46,7 +46,7 @@ export default function CartModal() {
         <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-700">
           <SheetTitle className="flex items-center justify-between" data-testid="cart-title">
             <span>Shopping Cart</span>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsCartOpen(false)}
@@ -54,7 +54,7 @@ export default function CartModal() {
               data-testid="close-cart"
             >
               <X className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </SheetTitle>
         </SheetHeader>
 
