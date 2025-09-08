@@ -37,20 +37,22 @@ import Careers from "@/pages/Careers";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
-
+import ScrollToTop from "./ScrollToTop";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   // Initialize theme system
   useTheme();
 
   return (
+    <ScrollToTop>
     <Switch>
+      
       <Route path="/landing" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
-      <Route path="/products/:slug" component={ProductDetail} />
+      <Route path="/products/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/profile" component={Profile} />
@@ -75,7 +77,9 @@ function Router() {
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/sitemap" component={Sitemap} />
       <Route component={NotFound} />
+    
     </Switch>
+    </ScrollToTop>
   );
 }
 
