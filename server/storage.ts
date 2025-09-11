@@ -241,7 +241,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product operations
-  async getProducts(options: { categoryId?: string; featured?: boolean; limit?: number; id?: string; fitnessLevel?: string } = {}): Promise<Product[]> {
+  async getProducts(options: { categoryId?: string; featured?: boolean; limit?: number; id?: string; fitnessLevel?: string ;stock?:number} = {}): Promise<Product[]> {
     const conditions = [eq(products.isActive, true)];
     
     if (options.id) {
@@ -250,6 +250,9 @@ export class DatabaseStorage implements IStorage {
     
     if (options.categoryId) {
       conditions.push(eq(products.categoryId, options.categoryId));
+    }
+    if (options.stock) {
+      conditions.push(eq(products.stock, options.stock));
     }
     
     if (options.featured) {

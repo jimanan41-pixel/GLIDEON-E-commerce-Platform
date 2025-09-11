@@ -11,13 +11,18 @@ import multer from "multer";
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-
+import { createClient } from '@supabase/supabase-js'
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
 // JWT secret (in production, use environment variable)
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
-
+const urlSUPER=process.env.SUPABASE_URL||"SUPERURL"
+const urlKey= process.env.SUPABASE_ANON_KEY||"SUPERKey"
+const supabase = createClient(
+  urlSUPER,
+  urlKey
+)
 // Middleware for JWT authentication
 const authenticateJWT = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
@@ -318,58 +323,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Image upload route - saves to GitHub repository for persistence
-  app.post('/api/upload/images', authenticateJWT, upload.array('images', 10), async (req: any, res) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
+  // app.post('/api/upload/images', authenticateJWT, upload.array('images', 10), async (req: any, res) => {
+  //   try {
+  //     if (req.user?.role !== 'admin') {
+  //       return res.status(403).json({ message: "Admin access required" });
+  //     }
 
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ message: "No images provided" });
-      }
+  //     if (!req.files || req.files.length === 0) {
+  //       return res.status(400).json({ message: "No images provided" });
+  //     }
 
-      // Save to client/public/uploads directory (part of GitHub repository)
-      const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
-      try {
-        await fs.access(uploadsDir);
-      } catch (error) {
-        console.log('Creating uploads directory:', uploadsDir);
-        await fs.mkdir(uploadsDir, { recursive: true });
-      }
+  //     // Save to client/public/uploads directory (part of GitHub repository)
+  //     const uploadsDir = path.join(process.cwd(), 'client', 'public', 'uploads');
+  //     try {
+  //       await fs.access(uploadsDir);
+  //     } catch (error) {
+  //       console.log('Creating uploads directory:', uploadsDir);
+  //       await fs.mkdir(uploadsDir, { recursive: true });
+  //     }
 
-      const imagePaths: string[] = [];
+  //     const imagePaths: string[] = [];
 
-      for (const file of req.files) {
-        // Generate unique filename with timestamp for better organization
-        const timestamp = Date.now();
-        const fileExtension = path.extname(file.originalname);
-        const uniqueFilename = `${timestamp}-${randomUUID()}${fileExtension}`;
-        const filePath = path.join(uploadsDir, uniqueFilename);
+  //     for (const file of req.files) {
+  //       // Generate unique filename with timestamp for better organization
+  //       const timestamp = Date.now();
+  //       const fileExtension = path.extname(file.originalname);
+  //       const uniqueFilename = `${timestamp}-${randomUUID()}${fileExtension}`;
+  //       const filePath = path.join(uploadsDir, uniqueFilename);
         
-        console.log('💾 Saving file to GitHub repository:', filePath);
-        // Save file to repository uploads directory
-        await fs.writeFile(filePath, file.buffer);
+  //       console.log('💾 Saving file to GitHub repository:', filePath);
+  //       // Save file to repository uploads directory
+  //       await fs.writeFile(filePath, file.buffer);
         
-        // Verify file was saved
-        const stats = await fs.stat(filePath);
-        console.log(`✅ File saved successfully - ${stats.size} bytes`);
+  //       // Verify file was saved
+  //       const stats = await fs.stat(filePath);
+  //       console.log(`✅ File saved successfully - ${stats.size} bytes`);
         
-        // Return web-accessible path
-        const webPath = `/uploads/${uniqueFilename}`;
-        imagePaths.push(webPath);
-      }
+  //       // Return web-accessible path
+  //       const webPath = `/uploads/${uniqueFilename}`;
+  //       imagePaths.push(webPath);
+  //     }
 
-      console.log('✅ Upload successful - files saved to GitHub repository:', imagePaths);
-      console.log('📁 Files will persist across all Render deployments');
-      res.json({ imagePaths });
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      res.status(500).json({ message: "Failed to upload images", error: error.message });
-    }
-  });
+  //     console.log('✅ Upload successful - files saved to GitHub repository:', imagePaths);
+  //     console.log('📁 Files will persist across all Render deployments');
+  //     res.json({ imagePaths });
+  //   } catch (error) {
+  //     console.error("Error uploading images:", error);
+  //     res.status(500).json({ message: "Failed to upload images", error: error.message });
+  //   }
+  // });
 
   // Object storage routes removed - now using file system uploads directly
-
+  const supabase = createClient(
+    process.env.SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_KEY as string
+  );
+  
+  app.post("/api/upload/images",
+    authenticateJWT,
+    upload.array("images", 10),
+    async (req: any, res) => {
+      try {
+        if (req.user?.role !== "admin") {
+          return res.status(403).json({ message: "Admin access required" });
+        }
+  
+        if (!req.files || req.files.length === 0) {
+          return res.status(400).json({ message: "No images provided" });
+        }
+  
+        const imagePaths: string[] = [];
+  
+        for (const file of req.files) {
+          // unique filename
+          const timestamp = Date.now();
+          const fileExtension = path.extname(file.originalname);
+          const uniqueFilename = `${timestamp}-${randomUUID()}${fileExtension}`;
+  
+          // upload to Supabase Storage
+          const { error } = await supabase.storage
+            .from("uploads") // your bucket name
+            .upload(uniqueFilename, file.buffer, {
+              contentType: file.mimetype,
+              upsert: false,
+            });
+  
+          if (error) {
+            console.error("❌ Supabase upload error:", error);
+            return res.status(500).json({
+              message: "Failed to upload image",
+              error: error.message,
+            });
+          }
+  
+          // construct public URL (works if bucket is public)
+          const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads/${uniqueFilename}`;
+          imagePaths.push(publicUrl);
+        }
+  
+        console.log("✅ Upload successful:", imagePaths);
+        res.json({ imagePaths });
+      } catch (error: any) {
+        console.error("Error uploading images:", error);
+        res.status(500).json({
+          message: "Failed to upload images",
+          error: error.message,
+        });
+      }
+    }
+  );
   // Category routes
   app.get('/api/categories', async (req, res) => {
     try {
@@ -451,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get('/api/products', async (req, res) => {
     try {
-      const { categoryId, featured, limit, fitnessLevel } = req.query;
+      const { categoryId, featured, limit, fitnessLevel,stock } = req.query;
       const options: any = {};
       
       if (categoryId) options.categoryId = categoryId as string;
@@ -460,6 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (fitnessLevel) options.fitnessLevel = fitnessLevel as string;
 
       const products = await storage.getProducts(options);
+      console.log(products)
       res.json(products);
     } catch (error) {
       console.error("Error fetching products:", error);
