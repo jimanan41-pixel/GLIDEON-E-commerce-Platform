@@ -88,7 +88,7 @@ export default function Header() {
     { href: "/", label: "Home" },
     { href: "/products", label: "All Products" },
     { href: "/about", label: "About" },
-    { href: "/contact", label: "Contact" },
+   
   ];
 
   return (
@@ -282,9 +282,11 @@ export default function Header() {
                 >
                   Sign Up
                 </Button>
+               
+                 
               </div>
             )}
-
+ <a  className="items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border bg-background hover:bg-accent h-9 rounded-md px-3 hidden md:block bgnone border-glideon-red text-glideon-red hover: hover:text-white" href="https://verify.glideonhealth.com/" target="_blank" style={{lineHeight:'31px'}}>Verify</a>
             {/* Mobile Menu Toggle */}
             <Sheet>
               <SheetTrigger asChild>

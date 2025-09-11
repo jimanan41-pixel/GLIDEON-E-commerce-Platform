@@ -60,7 +60,7 @@ export default function CartModal() {
               className="h-8 w-8 p-0"
               data-testid="close-cart"
             >
-              <X className="h-4 w-4" />
+              {/* <X className="h-4 w-4" /> */}
             </Button>
           </SheetTitle>
         </SheetHeader>

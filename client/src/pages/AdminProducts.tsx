@@ -46,7 +46,7 @@ export default function AdminProducts() {
     queryKey: ["/api/products"],
     enabled: isAuthenticated && user?.role === 'admin',
   });
-
+console.log(products)
   const { data: categories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
     enabled: isAuthenticated && user?.role === 'admin',
@@ -120,7 +120,8 @@ export default function AdminProducts() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Product Management
+                Product Management  
+
               </h1>
               <p className="mt-2 text-gray-600 dark:text-gray-400">
                 Manage your product catalog
@@ -156,7 +157,7 @@ export default function AdminProducts() {
                       <th className="text-left py-3 px-4">Image</th>
                       <th className="text-left py-3 px-4">Name</th>
                       <th className="text-left py-3 px-4">Price</th>
-                      <th className="text-left py-3 px-4">Stock</th>
+                      {/* <th className="text-left py-3 px-4">Stock</th> */}
                       <th className="text-left py-3 px-4">Category</th>
                       <th className="text-left py-3 px-4">Status</th>
                       <th className="text-left py-3 px-4">Actions</th>
@@ -200,11 +201,11 @@ export default function AdminProducts() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4">
+                        {/* <td className="py-3 px-4">
                           <Badge variant={product.stock && product.stock > 0 ? "default" : "destructive"}>
                             {product.stock || 0}
                           </Badge>
-                        </td>
+                        </td> */}
                         <td className="py-3 px-4">
                           {categories?.find(c => c.id === product.categoryId)?.name || "Uncategorized"}
                         </td>

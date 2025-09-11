@@ -75,7 +75,7 @@ export default function HeroSection() {
   // Show fallback if no banners are available
   if (!activeBanners.length) {
     return (
-      <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black dark:from-black dark:via-gray-900 dark:to-gray-800 text-white">
+      <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black dark:from-black dark:via-gray-900 dark:to-gray-800 text-white  maxhytslider">
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="max-w-3xl text-center">
             <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -97,7 +97,7 @@ export default function HeroSection() {
   }
 
   return (
-    <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black dark:from-black dark:via-gray-900 dark:to-gray-800 text-white">
+    <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black dark:from-black dark:via-gray-900 dark:to-gray-800 text-white maxhytslider">
       {/* Background Image Slider */}
       <div className="absolute inset-0 z-0">
         {activeBanners.map((banner, index) => (
@@ -162,23 +162,24 @@ export default function HeroSection() {
           <p className="text-xl lg:text-2xl text-gray-300 mb-8 leading-relaxed" data-testid="hero-description">
             {activeBanners[currentSlide]?.subtitle}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+         
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 items-center" style={{marginLeft:'-50px'}}>
             {activeBanners[currentSlide]?.buttonText && activeBanners[currentSlide]?.buttonUrl && (
               <Button 
                 onClick={() => handleButtonClick(activeBanners[currentSlide].buttonUrl)}
-                className="bg-glideon-red hover:bg-red-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-colors duration-300 whitespace-nowrap" 
+                className="mt20 bg-glideon-red hover:bg-red-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-colors duration-300 whitespace-nowrap" 
                 data-testid="hero-cta-button"
               >
                 {activeBanners[currentSlide].buttonText}
               </Button>
             )}
-            <span className="text-gray-400 text-lg">or explore our collections below</span>
+            {/* <span className="text-gray-400 text-lg">or explore our collections below</span> */}
           </div>
-        </div>
       </div>
 
       {/* Stats Section */}
-      <div className="relative z-10 bg-black/40 backdrop-blur-sm border-t border-white/10">
+      <div className="relative z-10 bg-black/40 backdrop-blur-sm border-t border-white/10 ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div data-testid="stat-products">
