@@ -155,4 +155,25 @@
  {
   margin-top: 28%;
  }
- 
+ .box-dark
+ {
+  box-shadow: 0px 0px 5px #575757;
+ }
+ @media (max-width: 1100px) {
+  .object-cover
+  {
+    object-fit: fill;
+  }
+  .mt20 {
+    /* margin-top: 28%; */
+    margin-left: -14px;
+    position: absolute;
+    left: 34px;
+    bottom: 26px;
+}
+.backdrop-blur-sm
+{
+  float: left;
+  width: 100%;
+}
+ }

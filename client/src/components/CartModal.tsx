@@ -53,15 +53,15 @@ export default function CartModal() {
         <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-700">
           <SheetTitle className="flex items-center justify-between" data-testid="cart-title">
             <span>Shopping Cart</span>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsCartOpen(false)}
               className="h-8 w-8 p-0"
               data-testid="close-cart"
             >
-              {/* <X className="h-4 w-4" /> */}
-            </Button>
+              <X className="h-4 w-4" />
+            </Button> */}
           </SheetTitle>
         </SheetHeader>
 
@@ -120,7 +120,7 @@ export default function CartModal() {
                         </div>
                       )}
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1" data-testid={`cart-item-price-${item.id}`}>
-                        ${price.toFixed(2)}
+                      ₹{price.toFixed(2)}
                       </p>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center space-x-2">

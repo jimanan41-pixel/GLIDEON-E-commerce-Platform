@@ -135,7 +135,7 @@ export default function InHighDemandSection() {
                               </div>
                             </div>
                             
-                            <Link href={`/products/${product.slug}`}>
+                            <Link href={`/products/${product.id}`}>
                               <Button className="w-full bg-glideon-red hover:bg-red-700 text-white">
                                 View Details
                               </Button>

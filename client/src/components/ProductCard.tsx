@@ -24,7 +24,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group" data-testid={`product-card-${product.id}`}>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group box-dark" data-testid={`product-card-${product.id}`}>
       <div className="relative overflow-hidden rounded-t-2xl">
         <Link href={`/products/${product.id}`}>
           <img

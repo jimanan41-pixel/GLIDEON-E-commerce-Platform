@@ -38,7 +38,7 @@ import Careers from "@/pages/Careers";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
-
+import ScrollToTop from "./ScrollToTop";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   // Initialize theme system
@@ -88,7 +88,9 @@ function App() {
         <CartProvider>
           <div>
             <Toaster />
+            <ScrollToTop>
             <Router />
+            </ScrollToTop>
           </div>
         </CartProvider>
       </ThemeProvider>

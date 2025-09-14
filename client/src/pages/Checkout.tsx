@@ -198,7 +198,26 @@ export default function Checkout() {
   const shipping = subtotal >= 50 ? 0 : 9.99;
   const tax = (subtotal - discount) * 0.08;
   const finalTotal = subtotal - discount + shipping + tax;
+  const enrichedCartItems = cartItems.map((item) => {
+    const product = getProductById(item.productId);
 
+    return {
+      productId: item.productId,
+      productName: product?.name || "",
+      variantId: item.variant?.id || null,
+      variant: item.variant ? {
+        id: item.variant.id,
+        size: item.variant.size,
+        unit: item.variant.unit,
+        flavor: item.variant.flavor,
+        price: item.variant.salePrice 
+          ? parseFloat(item.variant.salePrice) 
+          : parseFloat(item.variant.price),
+      } : null,
+      quantity: item.quantity,
+      price: calculateItemTotal(item), // total for this line
+    };
+  });
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -218,6 +237,7 @@ export default function Checkout() {
       createOrderMutation.mutate({
         total: finalTotal.toFixed(2),
         shippingAddress,
+        cartItems: enrichedCartItems,
         paymentMethod,
         paymentStatus: "paid",
         status: "processing",
