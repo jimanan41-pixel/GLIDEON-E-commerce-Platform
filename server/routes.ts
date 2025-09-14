@@ -11,7 +11,8 @@ import multer from "multer";
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
+import nodemailer from "nodemailer";
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -23,6 +24,8 @@ const supabase = createClient(
   urlSUPER,
   urlKey
 )
+
+
 // Middleware for JWT authentication
 const authenticateJWT = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
@@ -732,6 +735,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders', authenticateJWT, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      
+     
       const user = await storage.getUser(userId);
       
       if (user?.role === 'admin') {
@@ -739,6 +744,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(orders);
       } else {
         const orders = await storage.getOrders(userId);
+        console.log(JSON.stringify(orders))
+      
         res.json(orders);
       }
     } catch (error) {
@@ -943,8 +950,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Clear cart after successful order
       await storage.clearCart(userId);
-      
-      res.status(201).json(order);
+          // format items into text
+          const itemsHtml = req.body.cartItems.map((item: any, idx: number) => {
+            return `
+              <tr>
+                <td style="padding:8px; border:1px solid #ddd;">${idx + 1}</td>
+                <td style="padding:8px; border:1px solid #ddd;">${item.productName}</td>
+                <td style="padding:8px; border:1px solid #ddd;">
+                  ${item.variant?.size || ""} ${item.variant?.unit || ""} ${item.variant?.flavor || ""}
+                </td>
+                <td style="padding:8px; border:1px solid #ddd; text-align:center;">${item.quantity}</td>
+                <td style="padding:8px; border:1px solid #ddd; text-align:right;">${item.price}</td>
+              </tr>
+            `;
+          }).join("");
+          
+          const shipping = req.body.shippingAddress;
+          
+          const htmlContent = `
+            <div style="background:#f9f9f9; padding:20px; font-family:Arial, sans-serif; color:#333;">
+              <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <div style="background:#E5B806; padding:20px; text-align:center;">
+                  <h1 style="margin:0; color:#fff;">🎉 Order Confirmed!</h1>
+                </div>
+          
+                <!-- Body -->
+                <div style="padding:20px;">
+                  <p style="font-size:16px;">Hi <b>${req.user.name || "Customer"}</b>,</p>
+                  <p style="font-size:15px;">
+                    Thank you for your purchase! Your order has been placed successfully and is now being processed.
+                  </p>
+          
+                  <h3 style="color:#E5B806;">Order Summary</h3>
+                  <p><b>Order ID:</b> ${order.id}</p>
+                  <p><b>Payment Method:</b> ${req.body.paymentMethod}</p>
+                  <p><b>Status:</b> ${req.body.status}</p>
+          
+                  <!-- Shipping -->
+                  <h3 style="color:#E5B806;">Shipping Address</h3>
+                  <p style="font-size:14px; line-height:1.5;">
+                    ${shipping.street}, <br/>
+                    ${shipping.city}, ${shipping.state} - ${shipping.zipCode}, <br/>
+                    ${shipping.country}
+                  </p>
+          
+                  <!-- Items Table -->
+                  <h3 style="color:#E5B806;">Items</h3>
+                  <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                    <thead>
+                      <tr style="background:#f1f1f1;">
+                        <th style="padding:8px; border:1px solid #ddd;">#</th>
+                        <th style="padding:8px; border:1px solid #ddd;">Product</th>
+                        <th style="padding:8px; border:1px solid #ddd;">Variant</th>
+                        <th style="padding:8px; border:1px solid #ddd;">Qty</th>
+                        <th style="padding:8px; border:1px solid #ddd;">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${itemsHtml}
+                    </tbody>
+                  </table>
+          
+                  <!-- Total -->
+                  <div style="margin-top:20px; font-size:16px;">
+                    <p><b>Total:</b> <span style="color:#E5B806; font-weight:bold;">${req.body.total}</span></p>
+                  </div>
+          
+                  <p style="margin-top:30px; font-size:14px; color:#555;">
+                    We’ll notify you once your items are shipped.  
+                    Thank you for shopping with us! 💖
+                  </p>
+                </div>
+          
+                <!-- Footer -->
+                <div style="background:#333; color:#fff; text-align:center; padding:15px; font-size:12px;">
+                  &copy; ${new Date().getFullYear()} Glideon Store. All rights reserved.
+                </div>
+              </div>
+            </div>
+          `;
+          
+      const transporter = nodemailer.createTransport({
+        service: 'gmail', // You can replace this with your email service provider
+        auth: {
+          user: 'sachdevamannji@gmail.com', // Your email address
+          pass: 'bwehltlfcquiqgyn'   // Your email password (or app-specific password)
+        }
+      });
+      const mailOptions = {
+        from: 'sachdevamannji@gmail.com',
+        to: req.user.email, // The recipient's email address (where you want to send the contact info)
+        subject: 'Order Places Successfully',
+        cc:'sachdevamannji@gmail.com',
+        bcc:'bankush28@gmail.com',          
+        html: htmlContent, 
+            };
+   
+     transporter.sendMail(mailOptions, (error: any, info: { response: any; }) => {
+        if (error) {
+          console.error('Error sending email:', error);
+          // Send back the response even if email fails
+          return res.status(500).json({ success: false, message: 'Failed to send email notification' });
+        }
+        console.log('Email sent:', info.response);
+        res.status(201).json(order);
+      });
+     
     } catch (error) {
       console.error("Error creating order:", error);
       res.status(500).json({ message: "Failed to create order" });

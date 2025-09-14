@@ -433,7 +433,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Order operations
-  async getOrders(userId?: string): Promise<Order[]> {
+  async getOrders(userId?: string): Promise<any> {
     if (userId) {
       return await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
     } else {
