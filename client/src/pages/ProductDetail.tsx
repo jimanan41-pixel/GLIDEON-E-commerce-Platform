@@ -286,11 +286,11 @@ export default function ProductDetail() {
           <div className="space-y-4">
             {/* Main Image Display */}
             <div className="relative group">
-              <div className="aspect-square w-full bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+              <div className="aspect-square mobilecustomhyt w-full bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                 <img
                   src={images[selectedImage]}
                   alt={`${product.name} - Image ${selectedImage + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full  object-cover group-hover:scale-105 transition-transform duration-300"
                   data-testid="product-main-image"
                 />
               </div>
@@ -322,7 +322,7 @@ export default function ProductDetail() {
             </div>
             
             {/* Thumbnail Slider */}
-            <div className="flex space-x-2 overflow-x-auto pb-2">
+            <div className="flex space-x-2 overflow-x-auto pb-2 mobilecustomthumbnail">
               {images.map((image, index) => (
                 <button
                   key={index}

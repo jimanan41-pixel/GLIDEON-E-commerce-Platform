@@ -36,6 +36,7 @@ export default function Products() {
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", selectedCategory, selectedFitnessLevel, searchQuery],
+    enabled: !!categories,
     queryFn: async () => {
       let url = "/api/products";
       const params = new URLSearchParams();
