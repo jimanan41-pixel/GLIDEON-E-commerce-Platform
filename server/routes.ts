@@ -809,7 +809,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const orders = await storage.getOrders();
-      res.json(orders);
+      const users = await storage.getAllUsers();
+      const ordersWithUser = orders.map((item: { userId: string; }) => ({
+        ...item,
+        user: users.find(u => u.id === item.userId) || null,
+      }));
+      res.json(ordersWithUser);
     } catch (error) {
       console.error("Error fetching admin orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
