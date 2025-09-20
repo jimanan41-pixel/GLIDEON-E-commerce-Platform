@@ -30,7 +30,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <img
             src={imageUrl}
             alt={product.name}
-            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
             data-testid={`product-image-${product.id}`}
           />
         </Link>
