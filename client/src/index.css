@@ -45,7 +45,12 @@
   --glideon-dark: hsl(210 20% 17%);
   --glideon-accent: hsl(0 83% 55%);
 }
-
+.mobilecustomthumbnail>button
+{
+  background-color: white;
+  height: 100px;
+  width: 100px;
+}
 .dark {
   --background: hsl(0 0% 0%);
   --foreground: hsl(200 6.6667% 91.1765%);
@@ -176,4 +181,34 @@
   float: left;
   width: 100%;
 }
+.h-52
+{
+  height: 300px;
+}
+.mobilecustomhyt
+{
+  background-color: white !important;
+  height: 300px;
+}
+.mobilecustomhyt>img
+{
+  height: 300px;
+}
+
+.mobilecustomthumbnail>button>img
+{
+  object-fit: cover !important;
+}
+.mobilecustomthumbnail>button
+{
+  background-color: white;
+ width: auto;
+ max-width: 140px;
+}
  }
+
+
+ /* .h-52
+ {
+  min-height: ;
+ } */
