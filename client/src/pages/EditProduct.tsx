@@ -685,14 +685,15 @@ export default function EditProduct() {
                             <SelectValue placeholder="Select unit" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="gm">Grams</SelectItem>
-                            <SelectItem value="kg">Kilograms</SelectItem>
-                            <SelectItem value="ml">Milliliters</SelectItem>
-                            <SelectItem value="ltr">Liters</SelectItem>
-                            <SelectItem value="pcs">Pieces</SelectItem>
-                            <SelectItem value="box">Box</SelectItem>
-                            <SelectItem value="bottle">Bottle</SelectItem>
-                            <SelectItem value="pack">Pack</SelectItem>
+                          <SelectItem value="gm">Grams (gm)</SelectItem>
+                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                          <SelectItem value="ml">Milliliters (ml)</SelectItem>
+                          <SelectItem value="l">Liters (l)</SelectItem>
+                          <SelectItem value="oz">Ounces (oz)</SelectItem>
+                          <SelectItem value="lbs">Pounds (lbs)</SelectItem>
+                          <SelectItem value="pcs">Pieces (pcs)</SelectItem>
+                          <SelectItem value="caps">Capsules (caps)</SelectItem>
+                          <SelectItem value="tabs">Tablets (tabs)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
