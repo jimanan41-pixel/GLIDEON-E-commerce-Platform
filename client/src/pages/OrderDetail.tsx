@@ -51,7 +51,7 @@ interface Order {
 }
 
 const formatPrice = (price: string | number) => {
-  return `$${parseFloat(price.toString()).toFixed(2)}`;
+  return '₹'+ `${parseFloat(price.toString()).toFixed(2)}`;
 };
 
 const getStatusColor = (status: string) => {
@@ -289,7 +289,7 @@ export default function OrderDetail() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500 dark:text-gray-400">Shipping</span>
                     <span className="text-gray-900 dark:text-white">
-                      {calculateSubtotal() >= 50 ? "Free" : "$9.99"}
+                      {calculateSubtotal() >= 50 ? "Free" : "₹9.99"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">

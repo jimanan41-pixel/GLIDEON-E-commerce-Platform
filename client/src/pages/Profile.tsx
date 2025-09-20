@@ -523,7 +523,7 @@ export default function Profile() {
                               {order.status}
                             </Badge>
                             <p className="text-lg font-semibold text-gray-900 dark:text-white mt-1">
-                              ${parseFloat(order.total).toFixed(2)}
+                            ₹{parseFloat(order.total).toFixed(2)}
                             </p>
                           </div>
                         </div>

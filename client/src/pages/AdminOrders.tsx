@@ -209,10 +209,10 @@ export default function AdminOrders() {
                         <td className="py-3 px-4">
                           <div>
                             <p className="font-medium text-gray-900 dark:text-white">
-                              {order.shippingAddress?.firstName} {order.shippingAddress?.lastName}
+                              {order?.user?.firstName} {order?.user?.lastName}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {order.shippingAddress?.email}
+                              {order?.user?.email}
                             </p>
                           </div>
                         </td>
@@ -223,7 +223,7 @@ export default function AdminOrders() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="font-medium text-gray-900 dark:text-white">
-                            ${order.total}
+                          ₹{order.total}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -242,7 +242,7 @@ export default function AdminOrders() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/admin/orders/${order.id}`)}
+                              onClick={() => navigate(`/order/${order.id}`)}
                               data-testid={`button-view-order-${order.id}`}
                             >
                               <Eye className="h-4 w-4" />
